@@ -2,12 +2,14 @@
 
 Two browser games inspired by the 1986 DOS arcade game, built to compare what different AI assistants produce from the same brief. In both, you run along the lines of a grid and color each one while a pursuer hunts you.
 
-| Version | Play offline | Source and technical notes |
-| --- | --- | --- |
-| Claude · Lightloom | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/claude/Lightloom.html) | [claude/](claude/) |
-| ChatGPT · Neon Circuit | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/chatgpt/Gapper.html) | [chatgpt/](chatgpt/) |
+**Play it in your browser: <https://iago-swi.github.io/gapper/>**
 
-Save a standalone file with the `.html` extension and open it in a browser. You can also download or clone this repository and open the root `index.html`, a landing page that links to both versions. Each version is self-contained in its own folder, with its own README.
+| Version | Play | Play offline | Source and technical notes |
+| --- | --- | --- | --- |
+| Claude · Lightloom | [Play](https://iago-swi.github.io/gapper/claude/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/claude/Lightloom.html) | [claude/](claude/) |
+| ChatGPT · Neon Circuit | [Play](https://iago-swi.github.io/gapper/chatgpt/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/chatgpt/Gapper.html) | [chatgpt/](chatgpt/) |
+
+To play offline, save a standalone file with the `.html` extension and open it in a browser. You can also download or clone this repository and open the root `index.html`, a landing page that links to both versions. Each version is self-contained in its own folder, with its own README.
 
 ## Claude version
 
