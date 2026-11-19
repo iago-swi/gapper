@@ -6,25 +6,27 @@
 <meta name="theme-color" content="#070913">
 <title>Gapper</title>
 <style>
-  :root{--ink:#070913;--paper:#eceaf2;--cyan:#6fe9ff;--jade:#86ffcf}
+  :root{--ink:#070913;--paper:#eceaf2;--cyan:#6fe9ff;--jade:#86ffcf;--gold:#ffd45e}
   *{box-sizing:border-box}
   body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px 16px;color:var(--paper);
     font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
     background:radial-gradient(ellipse at 50% 0%,#1d1a3a 0%,#0f1024 45%,var(--ink) 100%)}
-  main{width:100%;max-width:820px}
+  main{width:100%;max-width:1080px}
   h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(56px,12vw,120px);line-height:.9;margin:0 0 20px;letter-spacing:-.02em}
-  p.lede{max-width:560px;font-size:18px;line-height:1.55;margin:0 0 34px;opacity:.9}
+  p.lede{max-width:580px;font-size:18px;line-height:1.55;margin:0 0 34px;opacity:.9}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
   a.card{display:block;padding:14px 14px 24px;border-radius:18px;text-decoration:none;color:inherit;
     background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);transition:transform .15s,background .15s,border-color .15s}
   a.card:hover,a.card:focus-visible{transform:translateY(-3px);background:rgba(255,255,255,.09);border-color:var(--cyan);outline:none}
   a.card.claude:hover,a.card.claude:focus-visible{border-color:var(--jade)}
+  a.card.gemini:hover,a.card.gemini:focus-visible{border-color:var(--gold)}
   .card img{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover;border-radius:9px;margin-bottom:18px;
     border:1px solid rgba(255,255,255,.1);background:#05060d}
   .card h2{font-family:Georgia,serif;font-style:italic;font-weight:400;font-size:30px;margin:0 8px 6px}
   .card p{font-size:14px;line-height:1.5;margin:0 8px;opacity:.75}
   .tag{display:inline-block;margin:16px 8px 0;padding:5px 12px;border-radius:99px;font-size:13px;font-weight:600;background:var(--cyan);color:var(--ink)}
   .claude .tag{background:var(--jade)}
+  .gemini .tag{background:var(--gold)}
   footer{margin-top:34px;font-size:13px;opacity:.6}
   footer a{color:var(--cyan)}
 </style>
@@ -32,7 +34,7 @@
 <body>
 <main>
   <h1>Gapper</h1>
-  <p class="lede">Two arcade games inspired by the 1986 DOS game Gapper. Run along the lines of a grid, color every one and stay ahead of the pursuer. Each version below was built by a different AI assistant from the same brief.</p>
+  <p class="lede">Three arcade games inspired by the 1986 DOS game Gapper. Run along the lines of a grid, color every one and stay ahead of the pursuer. Each version below was built by a different AI assistant from the same brief.</p>
   <div class="grid">
     <a class="card claude" href="claude/index.html">
       <img src="claude/screenshot.jpg" width="800" height="500" alt="Lightloom in play: eight lit squares of blue-green glass on a loom floating in a nebula, the shuttle at the center of a shockwave and two pink moths closing in">
@@ -41,6 +43,10 @@
     <a class="card" href="chatgpt/index.html">
       <img src="chatgpt/screenshot.png" width="800" height="500" alt="Neon Circuit in play: cyan rails mark the runner’s route, violet rails remain to be traced, and a pink seeker approaches the open gap">
       <h2>Neon Circuit</h2><p>Built with ChatGPT. Glowing rails above a pixel-art city, and a gap to cut behind you.</p><span class="tag">Play Neon Circuit</span>
+    </a>
+    <a class="card gemini" href="Gemini/index.html">
+      <img src="Gemini/screenshot.png" width="800" height="500" alt="Prism in play: golden crystalline chambers illuminated on an obsidian monolith over a WebGL 2 nebula, with a shockwave ripple, crackling cyan Plasma Gap, and crimson Seeker">
+      <h2>Prism</h2><p>Built with Gemini. WebGL 2 HDR bloom, synth-glass chambers, Prism Overdrive and 6 sectors.</p><span class="tag">Play Prism</span>
     </a>
   </div>
   <footer>Personal fan project. Watch the <a href="https://www.youtube.com/watch?v=hsFy7OdexQw&amp;t=20s">original DOS game</a>.</footer>

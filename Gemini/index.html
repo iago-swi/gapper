@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GAPPER // PRISM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Main WebGL2 / Fallback Display Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Minimalist Top HUD (hidden on Title) -->
+    <header id="hud" class="hud hidden" aria-label="Game HUD">
+      <div class="hud-group hud-left">
+        <div class="hud-pill score-pill">
+          <span class="hud-label">SCORE</span>
+          <div class="score-row">
+            <span id="hud-score" class="hud-value">000000</span>
+            <span id="hud-combo" class="combo-badge hidden">x2</span>
+          </div>
+        </div>
+        <div class="hud-pill best-pill">
+          <span class="hud-label">BEST</span>
+          <span id="hud-best" class="hud-value dim">000000</span>
+        </div>
+      </div>
+
+      <div class="hud-group hud-center">
+        <div class="hud-pill stage-pill">
+          <div class="stage-meta">
+            <span id="hud-stage" class="stage-tag">SECTOR 01</span>
+            <span id="hud-stage-name" class="stage-name">PRISM CIRCUIT</span>
+          </div>
+          <div class="progress-ring-wrap" title="Sector Completion">
+            <svg class="progress-ring" viewBox="0 0 40 40">
+              <circle class="ring-bg" cx="20" cy="20" r="16" />
+              <circle id="hud-progress-ring" class="ring-fg" cx="20" cy="20" r="16" />
+            </svg>
+            <span id="hud-percent" class="ring-text">0%</span>
+          </div>
+        </div>
+        <div id="overdrive-banner" class="overdrive-banner hidden">
+          <span class="od-pulse"></span>
+          <span>PRISM OVERDRIVE</span>
+          <span id="od-timer">6.0s</span>
+        </div>
+      </div>
+
+      <div class="hud-group hud-right">
+        <div class="hud-pill gap-pill" title="Gap Charges (SPACE)">
+          <span class="hud-label">GAP ARC</span>
+          <div id="hud-gaps" class="gap-pips">
+            <div class="gap-pip"><div class="gap-pip-fill"></div></div>
+            <div class="gap-pip"><div class="gap-pip-fill"></div></div>
+            <div class="gap-pip"><div class="gap-pip-fill"></div></div>
+          </div>
+        </div>
+        <div class="hud-pill lives-pill" title="Remaining Cores">
+          <span class="hud-label">CORES</span>
+          <div id="hud-lives" class="lives-icons"></div>
+        </div>
+        <div class="hud-actions">
+          <button id="btn-sound" class="icon-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">
+            <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            <svg id="icon-sound-off" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
+          <button id="btn-pause" class="icon-btn" title="Pause (P / Esc)" aria-label="Pause">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+              <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Title Overlay -->
+    <section id="overlay-title" class="overlay visible">
+      <div class="title-card">
+        <div class="title-eyebrow">1986 ARCADE REIMAGINED</div>
+        <h1 class="game-title" data-text="GAPPER">
+          <span>G</span><span>A</span><span>P</span><span>P</span><span>E</span><span>R</span>
+        </h1>
+        <div class="title-subtitle">PRISM EDITION</div>
+
+        <div class="how-to-strip">
+          <div class="how-item">
+            <div class="how-key">WASD / ARROWS</div>
+            <div class="how-desc">Trace luminous conduits along the grid</div>
+          </div>
+          <div class="how-item">
+            <div class="how-key accent-gold">ENCLOSE CELLS</div>
+            <div class="how-desc">Surround every cell to ignite the sector</div>
+          </div>
+          <div class="how-item">
+            <div class="how-key accent-cyan">SPACE — GAP</div>
+            <div class="how-desc">Sever the rail behind you to block Seekers</div>
+          </div>
+        </div>
+
+        <div class="sector-picker">
+          <span class="picker-label">STARTING SECTOR</span>
+          <div id="sector-buttons" class="sector-buttons"></div>
+        </div>
+
+        <div class="title-cta-row">
+          <button id="btn-play" class="primary-btn">
+            <span class="btn-glow"></span>
+            <span class="btn-text">LAUNCH SECTOR</span>
+            <span class="btn-hint">ENTER</span>
+          </button>
+        </div>
+
+        <div class="title-footer">
+          <span class="footer-tip">TIP: Seal all 4 corner chambers to trigger <strong>PRISM OVERDRIVE</strong> &amp; hunt Seekers!</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage Intro Banner (non-blocking) -->
+    <div id="stage-banner" class="stage-banner hidden">
+      <div id="banner-eyebrow" class="banner-eyebrow">SECTOR 01</div>
+      <div id="banner-title" class="banner-title">PRISM CIRCUIT</div>
+      <div id="banner-sub" class="banner-sub">TRACE ALL CONDUITS • SEVER TO SURVIVE</div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <section id="overlay-pause" class="overlay hidden">
+      <div class="modal-card">
+        <div class="modal-eyebrow">SYSTEM PAUSED</div>
+        <h2 class="modal-title">SECTOR ON HOLD</h2>
+        <div class="modal-actions">
+          <button id="btn-resume" class="primary-btn">
+            <span class="btn-text">RESUME</span>
+          </button>
+          <button id="btn-restart" class="secondary-btn">RESTART SECTOR</button>
+          <button id="btn-menu" class="ghost-btn">RETURN TO TITLE</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stage Clear Overlay -->
+    <section id="overlay-clear" class="overlay hidden">
+      <div class="modal-card clear-card">
+        <div class="modal-eyebrow accent-gold">SECTOR ILLUMINATED</div>
+        <h2 id="clear-title" class="modal-title">SECTOR 01 COMPLETE</h2>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">SECTOR BONUS</span>
+            <span id="clear-bonus" class="stat-val accent-gold">+1,500</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">MAX CHAIN</span>
+            <span id="clear-chain" class="stat-val accent-cyan">x4</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">SEEKERS BLOCKED</span>
+            <span id="clear-blocks" class="stat-val">3</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">TOTAL SCORE</span>
+            <span id="clear-score" class="stat-val">004250</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-next-stage" class="primary-btn">
+            <span class="btn-text">NEXT SECTOR</span>
+            <span class="btn-hint">ENTER</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game Over / Victory Overlay -->
+    <section id="overlay-gameover" class="overlay hidden">
+      <div class="modal-card">
+        <div id="go-eyebrow" class="modal-eyebrow accent-crimson">SIGNAL LOST</div>
+        <h2 id="go-title" class="modal-title">GAME OVER</h2>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">FINAL SCORE</span>
+            <span id="go-score" class="stat-val accent-gold">000000</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">HIGH SCORE</span>
+            <span id="go-best" class="stat-val accent-cyan">000000</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">SECTOR REACHED</span>
+            <span id="go-stage" class="stat-val">01</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">CELLS SEALED</span>
+            <span id="go-cells" class="stat-val">0</span>
+          </div>
+        </div>
+        <div id="go-new-best" class="new-best-pill hidden">NEW HIGH SCORE</div>
+        <div class="modal-actions">
+          <button id="btn-retry" class="primary-btn">
+            <span class="btn-text">PLAY AGAIN</span>
+            <span class="btn-hint">ENTER</span>
+          </button>
+          <button id="btn-go-menu" class="ghost-btn">MAIN MENU</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Subtle Bottom Controls Hint during active play -->
+    <footer id="controls-bar" class="controls-bar hidden">
+      <span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move</span>
+      <span class="sep">•</span>
+      <span><kbd>SPACE</kbd> Sever Rail (Gap)</span>
+      <span class="sep">•</span>
+      <span><kbd>P</kbd> Pause</span>
+      <span class="sep">•</span>
+      <span><kbd>M</kbd> Audio</span>
+    </footer>
+
+    <!-- Touch Controls (shown only on coarse pointer / touch devices during play) -->
+    <div id="touch-controls" class="touch-controls hidden">
+      <div class="dpad">
+        <button class="dpad-btn up" data-dir="up" aria-label="Up">▲</button>
+        <button class="dpad-btn left" data-dir="left" aria-label="Left">◀</button>
+        <button class="dpad-btn right" data-dir="right" aria-label="Right">▶</button>
+        <button class="dpad-btn down" data-dir="down" aria-label="Down">▼</button>
+      </div>
+      <button id="touch-gap" class="touch-gap-btn" aria-label="Create Gap">
+        <span>GAP</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Clean modular scripts (works over both http:// and file://) -->
+  <script src="js/levels.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/shaders.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
