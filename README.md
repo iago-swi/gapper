@@ -7,7 +7,7 @@ Three browser games inspired by the 1986 DOS arcade game, built to compare what 
 | Version | Play | Play offline | Source and technical notes |
 | --- | --- | --- | --- |
 | Claude · Lightloom | [Play](https://iago-swi.github.io/gapper/Claude/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/Claude/Lightloom.html) | [Claude/](Claude/) |
-| ChatGPT · Neon Circuit | [Play](https://iago-swi.github.io/gapper/chatgpt/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/chatgpt/Gapper.html) | [chatgpt/](chatgpt/) |
+| ChatGPT · Neon Circuit | [Play](https://iago-swi.github.io/gapper/ChatGPT/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/ChatGPT/Gapper.html) | [ChatGPT/](ChatGPT/) |
 | Gemini · Prism | [Play](https://iago-swi.github.io/gapper/Gemini/) | Clone or download and open [Gemini/index.html](Gemini/index.html) | [Gemini/](Gemini/) |
 
 To play offline, save a standalone file with the `.html` extension and open it in a browser, or download/clone this repository and open the root `index.html`, a landing page that links to all three versions. Each version is self-contained in its own folder, with its own README.
@@ -20,7 +20,7 @@ Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread
 
 ## ChatGPT version
 
-![Neon Circuit in play. Cyan rails mark the runner’s route, violet rails remain to be traced, and a pink seeker approaches the open gap.](chatgpt/screenshot.png)
+![Neon Circuit in play. Cyan rails mark the runner’s route, violet rails remain to be traced, and a pink seeker approaches the open gap.](ChatGPT/screenshot.png)
 
 Use the arrow keys or WASD to steer. Press **Space** after crossing a rail to break it behind you. On a touchscreen, use the direction pad and **Cut gap**.
 
@@ -47,7 +47,7 @@ The move that gave *Gapper* its name let the player temporarily break a line. A 
 ```text
 gapper/
 ├── Claude/        Lightloom: game, source, screenshot and technical notes
-├── chatgpt/       Neon Circuit: game, editable source, screenshot and technical notes
+├── ChatGPT/       Neon Circuit: game, editable source, screenshot and technical notes
 ├── Gemini/        Prism: WebGL 2 game, screenshot and technical notes
 ├── index.html     Landing page that links to all three versions
 └── README.md
