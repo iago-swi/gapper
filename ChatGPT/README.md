@@ -2,9 +2,9 @@
 
 Trace every rail while a seeker closes in. The cyan runner keeps moving in its current direction. Queue your next turn before the junction, then cut the rail behind you to buy time.
 
-**[Play it in your browser](https://iago-swi.github.io/gapper/chatgpt/)**
+**[Play it in your browser](https://iago-swi.github.io/gapper/ChatGPT/)**
 
-**Play offline.** Download [Gapper.html](https://raw.githubusercontent.com/iago-swi/gapper/main/chatgpt/Gapper.html), save it as an HTML file, and open it in a modern browser. It includes the scripts, styles and skyline image. To work on the source, clone the repository and open this folder’s `index.html`. Both editions run directly from disk.
+**Play offline.** Download [Gapper.html](https://raw.githubusercontent.com/iago-swi/gapper/main/ChatGPT/Gapper.html), save it as an HTML file, and open it in a modern browser. It includes the scripts, styles and skyline image. To work on the source, clone the repository and open this folder’s `index.html`. Both editions run directly from disk.
 
 ## Controls
 
