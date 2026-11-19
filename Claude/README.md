@@ -8,13 +8,13 @@ square to light it, and stay ahead of the moths that hunt the light.
 Graphics and sound are generated in the browser (WebGL 2 and Web Audio). There are no
 image or audio files and no libraries.
 
-**[Play it in your browser](https://iago-swi.github.io/gapper/claude/)**
+**[Play it in your browser](https://iago-swi.github.io/gapper/Claude/)**
 
 ![Lightloom in play on the third weave, Verdigris: eight lit squares in blue-green glass, the shuttle at the centre of a shockwave, and two pink moths closing in](screenshot.jpg)
 
 ## Run it
 
-Play online with the link above. To play offline, download [Lightloom.html](https://raw.githubusercontent.com/iago-swi/gapper/main/claude/Lightloom.html),
+Play online with the link above. To play offline, download [Lightloom.html](https://raw.githubusercontent.com/iago-swi/gapper/main/Claude/Lightloom.html),
 save it as an HTML file and open it in a current version of Chrome, Edge, Firefox or
 Safari. That single file contains the whole game. To work on the source, clone the
 repository and open this folder's `index.html`. Both run directly from disk; no
