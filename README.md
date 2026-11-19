@@ -6,7 +6,7 @@ Three browser games inspired by the 1986 DOS arcade game, built to compare what 
 
 | Version | Play | Play offline | Source and technical notes |
 | --- | --- | --- | --- |
-| Claude · Lightloom | [Play](https://iago-swi.github.io/gapper/claude/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/claude/Lightloom.html) | [claude/](claude/) |
+| Claude · Lightloom | [Play](https://iago-swi.github.io/gapper/Claude/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/Claude/Lightloom.html) | [Claude/](Claude/) |
 | ChatGPT · Neon Circuit | [Play](https://iago-swi.github.io/gapper/chatgpt/) | [Download the standalone game](https://raw.githubusercontent.com/iago-swi/gapper/main/chatgpt/Gapper.html) | [chatgpt/](chatgpt/) |
 | Gemini · Prism | [Play](https://iago-swi.github.io/gapper/Gemini/) | Clone or download and open [Gemini/index.html](Gemini/index.html) | [Gemini/](Gemini/) |
 
@@ -14,7 +14,7 @@ To play offline, save a standalone file with the `.html` extension and open it i
 
 ## Claude version
 
-![Lightloom in play on the third weave. Eight squares of blue-green glass are lit, the shuttle sits at the center of a shockwave, and two pink moths close in along the unwoven threads.](claude/screenshot.jpg)
+![Lightloom in play on the third weave. Eight squares of blue-green glass are lit, the shuttle sits at the center of a shockwave, and two pink moths close in along the unwoven threads.](Claude/screenshot.jpg)
 
 Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread to weave it, and close all four sides of a square to light it. A freshly lit square stuns the moths close by. On a touchscreen, swipe.
 
@@ -46,7 +46,7 @@ The move that gave *Gapper* its name let the player temporarily break a line. A 
 
 ```text
 gapper/
-├── claude/        Lightloom: game, source, screenshot and technical notes
+├── Claude/        Lightloom: game, source, screenshot and technical notes
 ├── chatgpt/       Neon Circuit: game, editable source, screenshot and technical notes
 ├── Gemini/        Prism: WebGL 2 game, screenshot and technical notes
 ├── index.html     Landing page that links to all three versions
