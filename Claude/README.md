@@ -205,4 +205,4 @@ real click and real key presses for starting, steering and pausing. The screensh
 was taken from such a run. Sound was not checked by ear, and frame rate on slower
 graphics hardware has not been measured.
 
-[Game history and the other version](../README.md)
+[Game history and the other versions](../README.md)
