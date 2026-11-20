@@ -25,21 +25,25 @@ Choose a steering scheme before starting, while paused, or at game over. Switchi
 
 The runner starts with three lives. The first crossing of a rail earns 10 points. A collision costs one life and preserves all traced rails. Completing the circuit awards another 100 points multiplied by the current level. Three handcrafted layouts cycle as the seeker gets faster.
 
+Open **High scores** beside the best score before launching. **This device** holds your ten best finished runs. **Everyone** shows the ten best Neon Circuit runs across players. A qualifying score is saved at game over. Type up to three initials to sign it, then press Enter once to focus **Play again** and again to launch. Older runs win ties.
+
 ## Technical notes
 
 ### Source and offline delivery
 
-Two classic JavaScript files divide the work. `Circuit.Game` owns positions, routes, score and lives. It accepts steering commands and elapsed time and emits events such as `rail`, `gap` and `hit`. The browser code subscribes to those events. A single `rail` event refreshes the scoreboard, marks the board image for redrawing, plays a short tone and emits four cyan sparks. The engine itself can run without a canvas or audio device.
+Three classic scripts divide the work. `Circuit.Game` owns positions, routes, score and lives. It accepts steering commands and elapsed time and emits events such as `rail`, `gap` and `hit`. The browser code subscribes to those events. A single `rail` event refreshes the scoreboard, marks the board image for redrawing, plays a short tone and emits four cyan sparks. The engine itself can run without a canvas or audio device.
 
 | File | Responsibility |
 | --- | --- |
 | [engine.js](engine.js) | Builds the rail graphs and advances movement, pursuit, gaps, scoring, lives and level transitions. |
 | [arcade.js](arcade.js) | Connects input to the engine, draws the board and sprites with Canvas 2D, updates the scoreboard and synthesizes sounds with the Web Audio API. |
+| [scores.js](scores.js) | Stores and ranks device scores, handles initials and keyboard focus, and communicates with the shared board. |
+| [scores-worker/](scores-worker/) | Cloudflare Worker, SQLite schema and Wrangler configuration for the Neon Circuit D1 database. |
 | [screen.css](screen.css) and [index.html](index.html) | Define the cabinet, responsive layout, touch controls and instructions dialog. |
 | [midnight-city.png](midnight-city.png) | The custom pixel-art skyline generated for this edition. |
 | [Gapper.html](Gapper.html) | Portable, single-file edition containing the same game and artwork. |
 
-The editable edition loads both scripts in order with `defer`. The standalone edition embeds their contents, the stylesheet and the skyline PNG in one HTML file. Both use built-in browser APIs and run directly from disk.
+The editable edition loads the scripts in order with `defer`. The standalone edition embeds their contents, the stylesheet and the skyline PNG in one HTML file. Both use built-in browser APIs and run directly from disk. Shared rankings require a network connection.
 
 ### Building the rail graph
 
@@ -111,9 +115,24 @@ Keyboard turns and pad presses share the same steering method. In third person a
 | --- | --- | --- |
 | `gapper.controls` | `third` (default) or `first` | As soon as a steering option is selected |
 | `gapper.sound` | `on` (default) or `off` | When the sound button is pressed |
-| `gapper.best` | Highest eligible score, in points | At game over, or when the browser sends a `pagehide` event without keeping the page in its back/forward cache |
+| `gapper.scores` | Device top ten, a JSON array in rank order | At game over and on every initials edit |
+| `gapper.initials` | Up to three uppercase letters or digits | As the player types |
+| `gapper.scoreList` | `device` (default) or `everyone` | When a list is selected |
+| `gapper.best` | Best score from earlier releases | Read for migration when the device list is empty |
 
-During an eligible run, the high-score display can rise with the current score before the record is written. Lives, traced rails and the open gap stay in memory, so reloading starts a fresh circuit. If storage is unavailable, the current session remains playable.
+Lives, traced rails and the open gap stay in memory, so reloading starts a fresh circuit. If browser storage is unavailable, the current session remains playable.
+
+### High scores
+
+**Shared scores are switched on.** Both browser editions use the dedicated [Neon Circuit score service](https://neoncircuit-scores.iago-swi.workers.dev/).
+
+**This device.** Only finished, eligible runs with a positive score can enter the list. A tie follows older entries, and a full list requires a score strictly above tenth place. Each entry contains initials, score, level reached, local calendar date and a random identifier for editing the correct row. Dates display as DD.MM.YYYY. An old personal best migrates with dashes for the unknown initials, level and date. The cabinet’s high-score display always reads the top entry.
+
+**Shared service.** The `neoncircuit-scores` Worker uses its own D1 database of the same name. GET returns the top ten. POST submits the initials, score and ending level along with a random 128-bit run key. Reusing a retained run’s key edits its initials. The response includes overall rank and marks the player’s row. The key stays private. D1 stores the key, initials, score, level and arrival time, from which the Worker derives the UTC date. SQLite insertion order breaks ties. A transaction ranks the submission, keeps the best 200 rows and limits new entries to 30 in a rolling minute across all players. The rate limiter keeps anonymous admission times separately so pruning a row cannot free another slot.
+
+**Which scores can reach the service?** Let `w` be the ending level and `j = w − 1` the number already cleared. Each completed cycle of three layouts contributes 231 rails (76 + 78 + 77). The remainder contributes 0, 76 or 154 rails. If `R` is that total, the minimum is `10R + 50j(j + 1)`. The second term sums the 100-point-per-level clear bonuses. The maximum adds `10 × (rails on level w − 1)`, since crossing the final rail clears the level before the ship can be caught there. A submitted score must be a positive integer multiple of 10. For example, level 2 admits 860 through 1,630 in steps of ten. These checks establish plausibility. The browser runs the game and reports its result.
+
+**Network behavior.** The initial POST goes out at game over with remembered initials. Editing a name updates the row immediately and sends the change after 700 ms of inactivity. Requests time out after eight seconds. The device result remains available if the service fails, and failed runs are never queued for later upload. Opening the Everyone board fetches it again. Both editions validate rows and render initials as text.
 
 <details><summary>Easter egg (spoiler)</summary>
 

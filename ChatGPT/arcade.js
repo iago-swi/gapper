@@ -52,16 +52,10 @@ const runnerSprite=spriteSheet(ship,shipColors),seekerSprite=spriteSheet(bug,bug
 const game=new Circuit.Game(onEvent);
 function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
-let best=Number(read("gapper.best",0))||0, soundOn=read("gapper.sound","on")==="on";
+let soundOn=read("gapper.sound","on")==="on";
+const scores=new Scoreboard(act);
 game.setScheme(read("gapper.controls","third"));
 let typed="",pauseBeforeWord=null;
-function finishScore(){
-  if(!game.practiced && game.score>best){
-    best=Math.max(game.score,Number(read("gapper.best",0))||0);
-    save("gapper.best",best);
-  }
-}
-window.addEventListener("pagehide",e=>{if(!e.persisted)finishScore();});
 let audioCtx,boardCache=null,bursts=[],elapsed=0,prevTime=0,guidePaused=false;
 const canvas=$("board"),ctx=canvas.getContext("2d"),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function unlock(){if(!soundOn)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});}catch{}}
@@ -79,8 +73,8 @@ function onEvent(ev){
   if(ev==="gap"){tone(850,120,.2,"sawtooth",0,.025);}
   if(ev==="hit"){tone(155,34,.45,"sawtooth");burst(game.pos(game.player),"#ff6bab",28);}
   if(ev==="clear"){[0,4,7,12].forEach((n,i)=>tone(330*2**(n/12),660,.22,"triangle",i*.09));}
-  if(game.state==="over") finishScore();
   sync();
+  if(ev==="hit" && game.state==="over") scores.finish(game);
 }
 function burst(p,color,n){if(reduced)return;for(let i=0;i<n;i++)bursts.push({p,color,age:0,dx:(Math.random()-.5)*90,dy:(Math.random()-.5)*90});}
 const states={
@@ -93,8 +87,8 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
-  const eligibleBest=game.practiced?best:Math.max(best,game.score);
-  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(eligibleBest).padStart(6,"0");
+  $("score").textContent=String(game.score).padStart(6,"0");scores.updateBest();
+  $("score-open").hidden=game.state!=="ready";$("best-label").hidden=game.state==="ready";
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;
   $("lives").innerHTML=Array.from({length:3},(_,i)=>'<span class="'+(i>=game.lives?"spent":"")+'">'+icon("heart")+'</span>').join("");
   $("lives").setAttribute("aria-label",game.lives+" lives");
@@ -138,6 +132,7 @@ $("got-it").onclick=()=>$("guide").close();
 $("guide").addEventListener("close",()=>{if(guidePaused && !document.hidden){game.state="playing";sync();}guidePaused=false;});
 const keyDirs={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"};
 window.addEventListener("keydown",e=>{
+  if(e.defaultPrevented || e.target===$("initials"))return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(!e.repeat && e.key.length===1){
@@ -149,7 +144,7 @@ window.addEventListener("keydown",e=>{
       pauseBeforeWord=null;sync();return;
     }
   }
-  if($("guide").open)return;
+  if($("guide").open || $("score-dialog").open)return;
   if(keyDirs[k]){e.preventDefault();if(!e.repeat)game.steer(keyDirs[k]);}
   else if(k===" " && (game.state==="playing" || e.target.tagName!=="BUTTON")){e.preventDefault();if(!e.repeat)game.cut();}
   else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat){const before=game.state;act();pauseBeforeWord=before;}}

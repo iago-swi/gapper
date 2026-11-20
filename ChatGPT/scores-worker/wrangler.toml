@@ -1,0 +1,10 @@
+name = "neoncircuit-scores"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+send_metrics = false
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "neoncircuit-scores"
+database_id = "4f0e8a06-f794-4de8-87fe-8860490e417b"
