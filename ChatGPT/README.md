@@ -1,6 +1,8 @@
 # Gapper · Neon Circuit
 
-Trace every rail while a seeker closes in. The cyan runner keeps moving in its current direction. Queue your next turn before the junction, then cut the rail behind you to buy time.
+*Neon Circuit* is a single-player rail chase. Fly the cyan ship over every violet rail while the pink seeker takes the shortest open route to intercept you. Cutting a rail behind you buys 3.6 seconds, but it also closes your own way back.
+
+The camera stays above the board in both steering schemes. In **Third person**, Left always means the left side of the screen. In **First person**, Left means the ship’s left. When the ship is heading down the screen, that same input sends it toward the right edge.
 
 **[Play it in your browser](https://iago-swi.github.io/gapper/ChatGPT/)**
 
@@ -10,7 +12,7 @@ Trace every rail while a seeker closes in. The cyan runner keeps moving in its c
 
 ## Controls
 
-Choose a steering scheme before starting or while paused. The choice takes effect immediately.
+Choose a steering scheme before starting, while paused, or at game over. Switching schemes clears any pending turn and takes effect immediately.
 
 | Scheme or action | Keyboard | Touch |
 | --- | --- | --- |
@@ -65,6 +67,10 @@ In first person the ship sets off automatically on launch and on each new life. 
 
 `requestAnimationFrame` supplies the clock. Each update consumes at most 50 milliseconds of elapsed time, limiting how far either actor advances after a slow frame. Positions, speed and collision distance use grid units, so resizing the cabinet changes how the board is drawn while preserving the rules.
 
+**Two inputs at the same junction.** On Midnight grid, head down the right edge from `(12,2)` toward `(12,3)`. Both nodes have an exit to screen-left. A third-person Left press at `t = 0.15` puts the runner 0.15 units along the branch from `(12,2)`. The same press at `t = 0.50` stays queued. The runner finishes the downward rail, then takes the left branch from `(12,3)`. In first person the equivalent input on this approach is **Right**.
+
+The one-second relative-turn buffer uses the browser’s monotonic clock (`performance.now()`). The 3.6-second repair timer uses simulation time. If you pause for two seconds with a turn queued and a gap open, the gap still has its remaining time when you resume, and the queued first-person turn has expired.
+
 ### The seeker and the gap
 
 At each node the seeker runs a breadth-first search through the available exits. It targets the node the runner is moving toward, or the runner’s current node while stationary. Each queue entry remembers the first direction taken from the seeker’s position. When the search finds the target, that direction is the next move on a shortest route. The seeker commits to one rail and searches again at the next node.
@@ -101,7 +107,13 @@ Each sound uses a Web Audio oscillator and a gain envelope with an 8 ms attack. 
 
 Keyboard turns and pad presses share the same steering method. In third person a swipe fires as soon as either axis reaches 10 CSS pixels, using the dominant axis. Opening the instructions pauses a live round. Switching tabs also pauses the simulation, including the gap timer. The reduced-motion preference suppresses particle bursts and the animated exhaust flame.
 
-The browser stores the best score under `gapper.best`, the sound switch under `gapper.sound`, and the steering choice under `gapper.controls` (`third` or `first`). The live circuit stays in memory, so reloading starts a fresh run. If browser storage is unavailable, the controls still work for the current session.
+| Browser storage key | Value | When it is written |
+| --- | --- | --- |
+| `gapper.controls` | `third` (default) or `first` | As soon as a steering option is selected |
+| `gapper.sound` | `on` (default) or `off` | When the sound button is pressed |
+| `gapper.best` | Highest eligible score, in points | At game over, or when the browser sends a `pagehide` event without keeping the page in its back/forward cache |
+
+During an eligible run, the high-score display can rise with the current score before the record is written. Lives, traced rails and the open gap stay in memory, so reloading starts a fresh circuit. If storage is unavailable, the current session remains playable.
 
 <details><summary>Easter egg (spoiler)</summary>
 
