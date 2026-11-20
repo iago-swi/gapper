@@ -8,6 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23110d28'/%3E%3Cpath d='m4 18 8-15 8 15-8-4z' fill='%2353ffef'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="screen.css">
   <script src="engine.js" defer></script>
+  <script src="scores.js" defer></script>
   <script src="arcade.js" defer></script>
 </head>
 <body>
@@ -29,7 +30,7 @@
         <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i>
         <div class="scoreboard">
           <div class="stat"><span class="stat-label"><b class="icon" data-icon="score"></b>Score</span><strong id="score">000000</strong></div>
-          <div class="stat gold"><span class="stat-label"><b class="icon" data-icon="trophy"></b>High score</span><strong id="best">000000</strong></div>
+          <div class="stat gold"><span class="stat-label" id="best-label" hidden><b class="icon" data-icon="trophy"></b>High score</span><button class="stat-label" id="score-open"><b class="icon" data-icon="trophy"></b>High scores</button><strong id="best">000000</strong></div>
           <div class="stat violet"><span class="stat-label"><b class="icon" data-icon="level"></b>Level</span><strong id="level">01</strong></div>
           <div class="stat pink"><span class="stat-label"><b class="icon" data-icon="heart"></b>Lives</span><div id="lives" aria-label="3 lives"></div></div>
         </div>
@@ -51,5 +52,15 @@
     </div>
   </main>
   <dialog id="guide"><form method="dialog"><button class="close" aria-label="Close instructions">×</button></form><h2>How to play</h2><p>Light every violet rail to clear the circuit. Each new rail adds 10 points.</p><dl><dt>Steer</dt><dd>Use the arrow keys or WASD. Your ship keeps moving. Queue a turn just before a junction.</dd><dt>Cut a gap</dt><dd>Press Space to break the last rail you crossed. Both ships must go around until it repairs. One gap can be open at a time.</dd><dt>Evade</dt><dd>The pink seeker hunts you. A collision costs one of your three lives. Lit rails stay lit.</dd><dt>Pause</dt><dd>Press P or use the cabinet button. On touchscreens, use the direction pad and Cut gap.</dd></dl><button class="primary" id="got-it">Got it</button></dialog>
+  <dialog id="score-dialog" aria-labelledby="score-heading">
+    <h2 id="score-heading">High scores</h2>
+    <p id="score-summary"></p>
+    <div id="score-tabs" role="group" aria-label="Score list" hidden><button data-list="device">This device</button><button data-list="everyone">Everyone</button></div>
+    <ol id="score-rows" aria-label="Ranked scores"></ol>
+    <p id="score-notice" role="status"></p>
+    <label id="initials-label" hidden>Your initials <input id="initials" maxlength="3" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>
+    <div id="score-scheme"></div>
+    <button id="score-done" class="primary">Back</button>
+  </dialog>
 </body>
 </html>

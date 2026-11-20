@@ -8,6 +8,23 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23110d28'/%3E%3Cpath d='m4 18 8-15 8 15-8-4z' fill='%2353ffef'/%3E%3C/svg%3E">
   <style>:root{color-scheme:dark;--ink:#090912;--cyan:#65fff1;--pink:#ff62aa;--muted:#aaa4ba;--line:#333041;--mono:"IBM Plex Mono",Consolas,"Courier New",monospace;--sans:"Barlow","Segoe UI",Arial,sans-serif}
 *{box-sizing:border-box}
+#score-dialog [hidden],#score-open[hidden],#best-label[hidden]{display:none}
+#score-open{background:transparent;border:0;padding:0;text-decoration:underline;text-underline-offset:3px}
+#score-dialog{width:min(560px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:clamp(16px,3vw,28px);border-color:#695079}
+#score-dialog h2{color:var(--cyan)}#score-dialog p:empty{display:none}
+#score-rows{list-style:none;margin:14px 0;padding:0;display:grid;gap:3px;color:#ddd6eb;font:14px var(--mono)}
+#score-rows li{display:grid;grid-template-columns:2ch 3.6ch minmax(5ch,1fr) auto 10ch;align-items:center;gap:9px;padding:6px 8px;background:#252032;border-radius:3px}
+#score-rows li.current{box-shadow:inset 3px 0 var(--cyan);background:#213434;color:#a2fff4}
+#score-rows .points{text-align:right;font-weight:bold;overflow-wrap:anywhere}
+#score-rows .date,#score-rows .level{font-size:12px;color:#c4b9cf}
+#score-tabs{display:flex;gap:5px}#score-tabs button{padding:7px 12px;background:#252032;border-radius:4px}
+#score-tabs [aria-pressed=true]{color:var(--cyan);background:#29403e}
+#initials-label{display:flex;align-items:center;gap:14px;margin:12px 0;color:#dfd5e9}
+#initials{font:700 18px var(--mono);width:6ch;letter-spacing:2px;color:var(--cyan);background:#100d19;border:1px solid #806a95;padding:5px;user-select:text;-webkit-user-select:text}
+#score-scheme #steering{padding:8px 0 14px}#score-done{margin-left:auto}
+@media(min-width:720px) and (max-height:740px){#score-dialog{width:min(900px,calc(100% - 32px))}#score-rows{grid-auto-flow:column;grid-template-rows:repeat(5,auto);grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}}
+@media(max-width:550px){#score-rows .date{display:none}#score-rows li{grid-template-columns:2ch 4ch 1fr auto}}
+@media(max-width:360px){#score-rows .level{display:none}#score-rows li{grid-template-columns:2ch 4ch 1fr}}
 #steering{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 13px 0;color:var(--muted);font-size:14px}
 #steering[hidden],#pax[hidden]{display:none}
 .scheme-options{display:inline-flex;border:1px solid #524558;border-radius:5px;padding:2px;background:#15121d}
@@ -82,7 +99,7 @@ dialog{width:min(450px,calc(100% - 30px));color:#f2effa;background:#171420;borde
         <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i>
         <div class="scoreboard">
           <div class="stat"><span class="stat-label"><b class="icon" data-icon="score"></b>Score</span><strong id="score">000000</strong></div>
-          <div class="stat gold"><span class="stat-label"><b class="icon" data-icon="trophy"></b>High score</span><strong id="best">000000</strong></div>
+          <div class="stat gold"><span class="stat-label" id="best-label" hidden><b class="icon" data-icon="trophy"></b>High score</span><button class="stat-label" id="score-open"><b class="icon" data-icon="trophy"></b>High scores</button><strong id="best">000000</strong></div>
           <div class="stat violet"><span class="stat-label"><b class="icon" data-icon="level"></b>Level</span><strong id="level">01</strong></div>
           <div class="stat pink"><span class="stat-label"><b class="icon" data-icon="heart"></b>Lives</span><div id="lives" aria-label="3 lives"></div></div>
         </div>
@@ -104,6 +121,16 @@ dialog{width:min(450px,calc(100% - 30px));color:#f2effa;background:#171420;borde
     </div>
   </main>
   <dialog id="guide"><form method="dialog"><button class="close" aria-label="Close instructions">×</button></form><h2>How to play</h2><p>Light every violet rail to clear the circuit. Each new rail adds 10 points.</p><dl><dt>Steer</dt><dd>Use the arrow keys or WASD. Your ship keeps moving. Queue a turn just before a junction.</dd><dt>Cut a gap</dt><dd>Press Space to break the last rail you crossed. Both ships must go around until it repairs. One gap can be open at a time.</dd><dt>Evade</dt><dd>The pink seeker hunts you. A collision costs one of your three lives. Lit rails stay lit.</dd><dt>Pause</dt><dd>Press P or use the cabinet button. On touchscreens, use the direction pad and Cut gap.</dd></dl><button class="primary" id="got-it">Got it</button></dialog>
+  <dialog id="score-dialog" aria-labelledby="score-heading">
+    <h2 id="score-heading">High scores</h2>
+    <p id="score-summary"></p>
+    <div id="score-tabs" role="group" aria-label="Score list" hidden><button data-list="device">This device</button><button data-list="everyone">Everyone</button></div>
+    <ol id="score-rows" aria-label="Ranked scores"></ol>
+    <p id="score-notice" role="status"></p>
+    <label id="initials-label" hidden>Your initials <input id="initials" maxlength="3" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>
+    <div id="score-scheme"></div>
+    <button id="score-done" class="primary">Back</button>
+  </dialog>
 <script>"use strict";
 const Circuit = (() => {
   const directions = {right:[1,0], left:[-1,0], up:[0,-1], down:[0,1]};
@@ -278,6 +305,196 @@ const Circuit = (() => {
 })();
 
 "use strict";
+const SHARED = "https://neoncircuit-scores.iago-swi.workers.dev/";
+const scoreKey = "gapper.scores";
+const initialsKey = "gapper.initials";
+const listKey = "gapper.scoreList";
+const initialsOf = name => (name.toUpperCase().match(/[\p{L}\p{N}]/gu) || []).slice(0,3).join("");
+const runKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b=>b.toString(16).padStart(2,"0")).join("");
+function today() {
+  const d=new Date();
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+}
+function validDate(d) {
+  if(typeof d!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(d))return false;
+  const date=new Date(d+"T00:00:00Z");
+  return Number.isFinite(+date) && date.toISOString().slice(0,10)===d;
+}
+function scoreRows(data,device) {
+  if(!Array.isArray(data))return [];
+  const rows=[];
+  for(const r of data){
+    if(!r || typeof r.n!=="string" || !Number.isFinite(r.s))continue;
+    const s=Math.round(r.s),w=Number.isFinite(r.w)?Math.round(r.w):null;
+    if(!Number.isSafeInteger(s) || s<=0)continue;
+    const legacy=device && r.legacy===true && r.w===null && r.d===null;
+    if(!legacy && (!Number.isFinite(r.w) || !Number.isSafeInteger(w) || w<1 || !validDate(r.d)))continue;
+    const row={n:initialsOf(r.n),s,w:legacy?null:w,d:legacy?null:r.d};
+    if(device){
+      if(legacy)row.legacy=true;
+      row.id=typeof r.id==="string" && /^[0-9a-f]{32}$/.test(r.id)?r.id:runKey();
+    }else if(r.me===true)row.me=true;
+    rows.push(row);
+  }
+  return rows.sort((a,b)=>b.s-a.s).slice(0,10);
+}
+
+class Scoreboard {
+  constructor(playAgain) {
+    this.dialog=$("score-dialog");
+    this.rows=[];this.current=null;this.remote=[];this.rank=null;
+    this.requestId=0;this.pending=false;this.failed=false;this.gameOver=false;
+    this.tab=SHARED && read(listKey,"device")==="everyone"?"everyone":"device";
+    this.load();
+    $("score-open").onclick=()=>this.open();
+    $("score-done").onclick=()=>{
+      const replay=this.gameOver;
+      this.close();
+      if(replay)playAgain();
+    };
+    $("initials").addEventListener("input",()=>this.rename());
+    this.dialog.addEventListener("keydown",e=>{
+      if(e.target===$("initials")){
+        e.stopPropagation();
+        if(e.repeat || e.key==="Enter" || e.key==="Escape")e.preventDefault();
+        if(!e.repeat && (e.key==="Enter" || e.key==="Escape"))$("score-done").focus();
+      }else if(this.gameOver && e.target===$("score-done") && e.key==="Enter"){
+        e.stopPropagation();e.preventDefault();if(!e.repeat)$("score-done").click();
+      }else if(!this.gameOver && (e.key==="Enter" || e.key==="Escape")){
+        e.stopPropagation();e.preventDefault();this.close();
+      }
+    });
+    this.dialog.addEventListener("cancel",e=>{e.preventDefault();if(!this.gameOver)this.close();});
+    document.querySelectorAll("[data-list]").forEach(b=>b.onclick=()=>{
+      this.tab=b.dataset.list;save(listKey,this.tab);this.render();
+      if(this.tab==="everyone" && !this.current?.submit)this.fetchTop();
+    });
+    window.addEventListener("storage",e=>{
+      if(e.key===scoreKey || e.key===null){this.load();this.updateBest();if(this.dialog.open)this.render();}
+    });
+  }
+  load() {
+    let raw;
+    try{raw=localStorage.getItem(scoreKey);}catch{return;}
+    if(raw===this.stored)return;
+    this.stored=raw;
+    try{this.rows=raw===null?[]:scoreRows(JSON.parse(raw),true);}catch{this.rows=[];}
+    if(raw!==null && JSON.stringify(this.rows)!==raw)this.saveRows();
+    const old=Math.round(Number(read("gapper.best",0)));
+    if(!this.rows.length && Number.isSafeInteger(old) && old>0){
+      this.rows=[{id:runKey(),n:"",s:old,w:null,d:null,legacy:true}];
+      this.saveRows();
+    }
+  }
+  saveRows(){
+    const value=JSON.stringify(this.rows);
+    try{localStorage.setItem(scoreKey,value);this.stored=value;}catch{}
+  }
+  updateBest(){$("best").textContent=String(this.rows[0]?.s||0).padStart(6,"0");}
+  invalidate(){
+    this.requestId++;this.remote=this.remote.map(({n,s,w,d})=>({n,s,w,d}));
+    this.rank=null;this.pending=false;this.failed=false;
+  }
+  open(){
+    this.gameOver=false;this.current=null;this.invalidate();this.load();
+    $("score-heading").textContent="High scores";$("score-summary").textContent="";
+    $("score-done").textContent="Back";this.render();this.dialog.showModal();$("score-done").focus();
+    if(this.tab==="everyone")this.fetchTop();
+  }
+  close(){
+    if(this.gameOver)document.querySelector(".deck").before($("steering"));
+    this.dialog.close();this.gameOver=false;
+  }
+  finish(game){
+    this.load();this.invalidate();this.gameOver=true;
+    const remembered=read(initialsKey,null);
+    const row={id:runKey(),n:initialsOf(remembered||""),s:game.score,w:game.level,d:today()};
+    const eligible=game.score>0 && !game.practiced;
+    const run={row,listed:false,submit:Boolean(SHARED && eligible),chain:Promise.resolve(),failedPost:false};
+    this.current=run;
+    if(eligible && (this.rows.length<10 || row.s>this.rows[9].s)){
+      this.rows.push(row);this.rows.sort((a,b)=>b.s-a.s);this.rows=this.rows.slice(0,10);
+      run.listed=true;this.saveRows();
+    }
+    const place=this.rows.indexOf(row)+1;
+    const message=game.practiced?"Practice runs do not count toward your best score.":
+      place===1?"That is your best yet.":place?"That is number "+place+" on this device.":"Your best is "+(this.rows[0]?.s||0)+".";
+    $("score-heading").textContent="Game over";$("score-summary").textContent=message;
+    $("score-done").textContent="Play again";$("initials").value=row.n;this.updateBest();
+    $("score-scheme").append($("steering"));this.render();this.dialog.showModal();
+    ((run.listed||run.submit) && remembered===null?$("initials"):$("score-done")).focus();
+    if(run.submit)this.post(run);
+    else if(this.tab==="everyone")this.fetchTop();
+  }
+  rename(){
+    const run=this.current;if(!run)return;
+    const n=initialsOf($("initials").value);$("initials").value=n;save(initialsKey,n);run.row.n=n;
+    if(run.listed){
+      this.load();const own=this.rows.find(r=>r.id===run.row.id);
+      if(own){own.n=n;this.saveRows();}
+    }
+    this.render();
+    if(run.submit && !run.failedPost){
+      clearTimeout(run.timer);run.timer=setTimeout(()=>this.post(run),700);
+    }
+  }
+  render(){
+    const local=this.tab==="device",run=this.current,rows=local?this.rows:this.remote;
+    $("score-tabs").hidden=!SHARED;
+    document.querySelectorAll("[data-list]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.list===this.tab)));
+    $("initials-label").hidden=!(this.gameOver && (run?.listed || run?.submit));
+    const list=$("score-rows");list.replaceChildren();
+    rows.forEach((row,i)=>{
+      const li=document.createElement("li");
+      const own=this.gameOver && (local?run?.row.id===row.id:row.me);
+      if(own)li.className="current";
+      const values=[["rank",i+1],["name",(own?run.row.n:row.n)||"—"],["points",row.s],["level",row.w?"Level "+row.w:"—"],["date",row.d?row.d.split("-").reverse().join("."):"—"]];
+      for(const [cls,value] of values){const el=document.createElement("span");el.className=cls;el.textContent=value;li.append(el);}
+      list.append(li);
+    });
+    let note="";
+    if(!local && this.failed)note="The shared list cannot be reached right now."+(this.gameOver&&run?.listed?" Your score is kept on this device.":"");
+    else if(!local && this.pending && !rows.length)note="Fetching the shared list…";
+    else if(!local && this.gameOver && this.rank>rows.length)note="Your score is number "+this.rank+" on the shared list.";
+    else if(!rows.length)note="No scores yet.";
+    $("score-notice").textContent=note;
+  }
+  fetchTop(){return this.request(null);}
+  post(run){
+    // Keep a run's edits in order, including an edit made before its first reply.
+    run.chain=run.chain.then(()=>run.failedPost?undefined:this.request(run));
+  }
+  async request(run){
+    if(!SHARED)return;
+    const visible=()=>!run || this.current===run;
+    const id=visible()?++this.requestId:0;
+    const latest=()=>visible() && this.requestId===id;
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+    if(latest()){this.failed=false;this.pending=true;this.render();}
+    try{
+      const options={signal:controller.signal,credentials:"omit",referrerPolicy:"no-referrer"};
+      if(run){
+        const {id:k,n,s,w}=run.row;
+        options.method="POST";options.body=JSON.stringify({k,n,s,w});
+      }
+      const res=await fetch(SHARED,options);
+      if(!res.ok)throw Error();
+      const data=await res.json();
+      if(!Array.isArray(data?.top) || (run && (!Number.isSafeInteger(data.rank)||data.rank<1)))throw Error();
+      if(latest()){
+        this.remote=scoreRows(data.top,false);this.rank=run?data.rank:null;
+      }
+    }catch{
+      if(run)run.failedPost=true;
+      if(latest())this.failed=true;
+    }finally{
+      clearTimeout(timer);
+      if(latest()){this.pending=false;this.render();}
+    }
+  }
+}
+
+"use strict";
 const $ = id => document.getElementById(id);
 const paths = {
   score:'<path d="m13 2-9 12h7l-1 8 10-13h-7z" fill="currentColor" stroke="none"/>',
@@ -331,16 +548,10 @@ const runnerSprite=spriteSheet(ship,shipColors),seekerSprite=spriteSheet(bug,bug
 const game=new Circuit.Game(onEvent);
 function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
-let best=Number(read("gapper.best",0))||0, soundOn=read("gapper.sound","on")==="on";
+let soundOn=read("gapper.sound","on")==="on";
+const scores=new Scoreboard(act);
 game.setScheme(read("gapper.controls","third"));
 let typed="",pauseBeforeWord=null;
-function finishScore(){
-  if(!game.practiced && game.score>best){
-    best=Math.max(game.score,Number(read("gapper.best",0))||0);
-    save("gapper.best",best);
-  }
-}
-window.addEventListener("pagehide",e=>{if(!e.persisted)finishScore();});
 let audioCtx,boardCache=null,bursts=[],elapsed=0,prevTime=0,guidePaused=false;
 const canvas=$("board"),ctx=canvas.getContext("2d"),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function unlock(){if(!soundOn)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});}catch{}}
@@ -358,8 +569,8 @@ function onEvent(ev){
   if(ev==="gap"){tone(850,120,.2,"sawtooth",0,.025);}
   if(ev==="hit"){tone(155,34,.45,"sawtooth");burst(game.pos(game.player),"#ff6bab",28);}
   if(ev==="clear"){[0,4,7,12].forEach((n,i)=>tone(330*2**(n/12),660,.22,"triangle",i*.09));}
-  if(game.state==="over") finishScore();
   sync();
+  if(ev==="hit" && game.state==="over") scores.finish(game);
 }
 function burst(p,color,n){if(reduced)return;for(let i=0;i<n;i++)bursts.push({p,color,age:0,dx:(Math.random()-.5)*90,dy:(Math.random()-.5)*90});}
 const states={
@@ -372,8 +583,8 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
-  const eligibleBest=game.practiced?best:Math.max(best,game.score);
-  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(eligibleBest).padStart(6,"0");
+  $("score").textContent=String(game.score).padStart(6,"0");scores.updateBest();
+  $("score-open").hidden=game.state!=="ready";$("best-label").hidden=game.state==="ready";
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;
   $("lives").innerHTML=Array.from({length:3},(_,i)=>'<span class="'+(i>=game.lives?"spent":"")+'">'+icon("heart")+'</span>').join("");
   $("lives").setAttribute("aria-label",game.lives+" lives");
@@ -417,6 +628,7 @@ $("got-it").onclick=()=>$("guide").close();
 $("guide").addEventListener("close",()=>{if(guidePaused && !document.hidden){game.state="playing";sync();}guidePaused=false;});
 const keyDirs={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"};
 window.addEventListener("keydown",e=>{
+  if(e.defaultPrevented || e.target===$("initials"))return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(!e.repeat && e.key.length===1){
@@ -428,7 +640,7 @@ window.addEventListener("keydown",e=>{
       pauseBeforeWord=null;sync();return;
     }
   }
-  if($("guide").open)return;
+  if($("guide").open || $("score-dialog").open)return;
   if(keyDirs[k]){e.preventDefault();if(!e.repeat)game.steer(keyDirs[k]);}
   else if(k===" " && (game.state==="playing" || e.target.tagName!=="BUTTON")){e.preventDefault();if(!e.repeat)game.cut();}
   else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat){const before=game.state;act();pauseBeforeWord=before;}}

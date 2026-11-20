@@ -22,7 +22,7 @@ Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread
 
 ![Neon Circuit in play. Cyan rails mark the runner’s route, violet rails remain to be traced, and a pink seeker approaches the open gap.](ChatGPT/screenshot.png)
 
-Turn every violet rail cyan before the pink seeker catches you. Press **Space** after crossing a rail to break it behind you. On a touchscreen, use the direction pad and **Cut gap**. Choose **Third person** for screen-relative steering and instant reversals, or **First person** to steer left and right from the ship’s point of view.
+Turn every violet rail cyan before the pink seeker catches you. Press **Space** after crossing a rail to break it behind you. On a touchscreen, use the direction pad and **Cut gap**. Choose **Third person** for screen-relative steering and instant reversals, or **First person** to steer left and right from the ship’s point of view. Open **High scores** to compare your device’s top ten with the shared Neon Circuit rankings.
 
 ## Gemini version
 
