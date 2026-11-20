@@ -137,6 +137,14 @@
   .center p { font-size: clamp(15px, 1.5vw, 18px); line-height: 1.6; font-weight: 300; }
   .center > div { margin: auto; }
   .center .go { margin-top: 30px; }
+  /* a row of actions: the main one, and a quieter way out next to it */
+  .acts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 14px; margin-top: 30px; }
+  .center .acts .go { margin-top: 0; }
+  button.quiet {
+    font: inherit; font-size: 15px; color: var(--dim); background: rgba(4, 5, 11, .35); border: 1px solid var(--faint); border-radius: 999px;
+    padding: 14px 24px; cursor: pointer; transition: color .2s ease, border-color .2s ease;
+  }
+  button.quiet:hover { color: var(--ink); border-color: rgba(244, 239, 230, .5); }
 
   /* ---------- high scores ---------- */
   .tall h2 { font-size: clamp(40px, 6vw, 76px); }
@@ -189,6 +197,13 @@
     .list { line-height: 1.55; margin-top: 12px; }
     .name-row { margin-top: 10px; }
     .center .go { margin-top: 16px; padding: 12px 26px; }
+    .acts { margin-top: 16px; }
+    button.quiet { padding-block: 11px; }
+  }
+  @media (max-width: 400px) {   /* keep both actions on one row */
+    .acts { gap: 8px; }
+    .center .acts .go { padding-inline: 20px; }
+    button.quiet { font-size: 14px; padding-inline: 13px; }
   }
   @media (max-height: 700px) and (min-width: 660px) {   /* a low, wide window: two columns of five */
     .tall h2 { font-size: 38px; }
@@ -197,6 +212,7 @@
     .list li { grid-template-columns: 1.5em 3.2em 5.2em 5.2em; }
     .list .day { display: none; }
     .center .go { margin-top: 20px; }
+    .acts { margin-top: 20px; }
   }
   @media (prefers-reduced-motion: reduce) {
     h1, .lede, .t-row, .keys, .pax #pax { animation: none; }
@@ -246,6 +262,7 @@
       <button type="button" data-ctrl="third" aria-pressed="true">Third person</button>
       <button type="button" data-ctrl="first" aria-pressed="false">First person</button>
     </div>
+    <div class="acts"><button id="endBtn" class="quiet" type="button">End this run</button></div>
   </div>
 </section>
 
@@ -261,7 +278,10 @@
     <ol id="overList" class="list" aria-label="High scores"></ol>
     <p id="overNote" class="note" hidden></p>
     <label id="nameRow" class="name-row" hidden>Your initials <input id="initials" maxlength="3" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
-    <button id="againBtn" class="go" type="button">Weave again</button>
+    <div class="acts">
+      <button id="againBtn" class="go" type="button">Weave again</button>
+      <button id="titleBtn" class="quiet" type="button">Title screen</button>
+    </div>
   </div>
 </section>
 
@@ -1175,14 +1195,26 @@ const AudioFX = (function () {
     spawnActors(); G.p.invuln = 2.2; G.state = 'play'; G.stateT = 0;
     for (const m of G.moths) m.wake = 1.2 + m.kind * 0.5;
   }
+  function toTitle() {                 // from the game-over screen back to the opening screen and its demo
+    if (G.state !== 'over') return;
+    el.over.classList.remove('show'); el.title.classList.add('show');
+    startTitle();
+    setTimeout(() => $('startBtn').focus(), 50);
+  }
+  function endRun() {                  // give up a paused run: it ends like any other, and its score counts
+    if (!G.paused) return;
+    el.pause.style.transition = 'none'; togglePause(); void el.pause.offsetWidth; el.pause.style.transition = '';   // no cross-fade: two headings would overlap
+    G.combo = 0; el.chain.classList.remove('show'); el.banner.classList.remove('show');
+    gameOver();
+  }
   function gameOver() {
+    const woven = G.level - (G.state === 'clear' ? 0 : 1);      // a run ended during the fireworks has finished that weave too
     G.state = 'over'; G.stateT = 0;
     const record = !G.practiced && G.score > G.best; if (record) { G.best = G.score; store.set(G.best); }
     mine = G.practiced ? null : addScore(G.score, G.level);
     shared.run = SHARED && !G.practiced && G.score > 0 ? { k: randomKey(), n: cleanName(prefs.get('name')), s: G.score, w: G.level } : null;
     for (const r of shared.top) r.me = false;          // the mark of the run before this one
     if (shared.run) sharedLoad(shared.run); else if (view === 'shared') sharedLoad();
-    const woven = G.level - 1;
     el.overLine.textContent = `You finished ${woven} ${woven === 1 ? 'weave' : 'weaves'} and scored ${fmt(G.score)}.`;
     el.overBest.textContent = G.practiced ? 'Practice runs do not count toward your best.' : record ? 'That is your best yet.'
       : mine ? `That is number ${scores.indexOf(mine) + 1} on this device.` : `Your best is ${fmt(G.best)}.`;
@@ -1596,13 +1628,15 @@ const AudioFX = (function () {
     switch (e.code) {
       case 'Enter': case 'Space': if (document.activeElement && document.activeElement.tagName === 'BUTTON') return; e.preventDefault(); confirm(); break;
       case 'KeyP': togglePause(); pausedByP = G.paused; break;
-      case 'Escape': if (scoresOpen()) { closeScores(); break; } togglePause(); pausedByP = false; break;
+      case 'Escape': if (scoresOpen()) closeScores(); else if (G.state === 'over') toTitle(); else { togglePause(); pausedByP = false; } break;
       case 'KeyM': AudioFX.init(); toggleMute(); break;
       case 'KeyF': if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); break;
     }
   });
   $('startBtn').addEventListener('click', startGame);
   $('againBtn').addEventListener('click', startGame);
+  $('titleBtn').addEventListener('click', toTitle);
+  $('endBtn').addEventListener('click', endRun);
   $('scoresBtn').addEventListener('click', openScores);
   $('backBtn').addEventListener('click', closeScores);
   for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('click', () => setView(b.dataset.list));
