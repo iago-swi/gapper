@@ -8,6 +8,14 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23110d28'/%3E%3Cpath d='m4 18 8-15 8 15-8-4z' fill='%2353ffef'/%3E%3C/svg%3E">
   <style>:root{color-scheme:dark;--ink:#090912;--cyan:#65fff1;--pink:#ff62aa;--muted:#aaa4ba;--line:#333041;--mono:"IBM Plex Mono",Consolas,"Courier New",monospace;--sans:"Barlow","Segoe UI",Arial,sans-serif}
 *{box-sizing:border-box}
+#steering{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 13px 0;color:var(--muted);font-size:14px}
+#steering[hidden],#pax[hidden]{display:none}
+.scheme-options{display:inline-flex;border:1px solid #524558;border-radius:5px;padding:2px;background:#15121d}
+.scheme-options button{background:transparent;border-radius:3px;padding:6px 10px;color:#c6bcd2;font:600 13px var(--mono)}
+.scheme-options button[aria-pressed="true"]{color:var(--cyan);background:#253334}
+.first-person .arrows kbd:nth-child(2),.first-person .arrows kbd:nth-child(3),.first-person .dpad>div{display:none}
+.legend:has(#pax:not([hidden])){flex-wrap:wrap;padding-inline:12px}
+#pax{color:#b3bd89;margin-left:auto;gap:3px}
 body{margin:0;background:#090912;color:#f4efff;font:16px var(--sans);min-height:100vh}
 button{font:inherit;color:inherit;cursor:pointer;border:0}
 button:focus-visible,canvas:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
@@ -81,7 +89,13 @@ dialog{width:min(450px,calc(100% - 30px));color:#f2effa;background:#171420;borde
         <div class="glass">
           <div class="screen-heading"><span class="level-title"><span class="level-index" id="sector">01</span><span id="circuit">Midnight grid</span></span><span class="progress"><span id="trace-bars"></span><b id="percent">0%</b> traced</span></div>
           <canvas id="board" width="1000" height="318" tabindex="0" aria-label="Rail maze. Use arrow keys or WASD to steer, and space to cut a gap."></canvas>
-          <div class="legend"><span><i class="player-key"></i>Runner</span><span><i class="enemy-key"></i>Seeker</span><span><i class="trail-key"></i>Traced rail</span></div>
+          <div class="legend"><span><i class="player-key"></i>Runner</span><span><i class="enemy-key"></i>Seeker</span><span><i class="trail-key"></i>Traced rail</span>
+            <span id="pax" hidden><svg viewBox="0 0 64 28" width="43" height="20" aria-hidden="true"><path d="M3 24Q31 24 59 5" fill="none" stroke="currentColor" stroke-width="1.5"/><defs><path id="leaf" d="M0 0Q1-5 10-5Q8 0 0 0Z"/></defs><g fill="currentColor"><use href="#leaf" transform="translate(10 23) rotate(-40)"/><use href="#leaf" transform="translate(15 22) rotate(46)"/><use href="#leaf" transform="translate(21 21) rotate(-38)"/><use href="#leaf" transform="translate(25 20) rotate(42)"/><use href="#leaf" transform="translate(31 17) rotate(-39)"/><use href="#leaf" transform="translate(36 15) rotate(36)"/><use href="#leaf" transform="translate(42 13) rotate(-42)"/><use href="#leaf" transform="translate(47 11) rotate(30)"/><use href="#leaf" transform="translate(52 9) rotate(-14)"/></g><g fill="#788348"><ellipse cx="22" cy="24" rx="2.5" ry="2"/><ellipse cx="39" cy="19" rx="2.5" ry="2"/></g></svg>PAX</span>
+          </div>
+        </div>
+        <div id="steering" role="group" aria-label="Steering controls" aria-describedby="scheme-hint">
+          <div class="scheme-options"><button type="button" data-scheme="third" aria-pressed="true">Third person</button><button type="button" data-scheme="first" aria-pressed="false">First person</button></div>
+          <span id="scheme-hint"></span>
         </div>
         <div class="deck"><div class="status"><div class="state-title"><i></i><strong id="status" role="status">Ready player one</strong></div><p id="message">Light up every rail. Evade the seeker.</p></div><button class="primary" id="action"><span class="icon" data-icon="play"></span><span id="action-label">Start game</span></button></div>
       </section>
@@ -93,6 +107,8 @@ dialog{width:min(450px,calc(100% - 30px));color:#f2effa;background:#171420;borde
 <script>"use strict";
 const Circuit = (() => {
   const directions = {right:[1,0], left:[-1,0], up:[0,-1], down:[0,1]};
+  const headings = ["up","right","down","left"];
+  const rotate = (dir,steps) => headings[(headings.indexOf(dir)+steps+4)%4];
   const names = ["Midnight grid", "Violet relay", "Ghost junction", "Afterburn", "Night drive", "Last light"];
   const key = (x,y) => x + "," + y;
   const railId = (a,b) => [a,b].sort().join("/");
@@ -132,20 +148,67 @@ const Circuit = (() => {
   }
   function actor(id,dir) {return {at:id,to:null,t:0,dir};}
   class Game {
-    constructor(event=()=>{}) {this.event=event;this.reset();}
-    reset() {this.score=0;this.lives=3;this.level=1;this.load();this.state="ready";}
+    constructor(event=()=>{}) {this.event=event;this.scheme="third";this.practice=false;this.reset();}
+    reset() {this.score=0;this.lives=3;this.level=1;this.practiced=false;this.load();this.state="ready";}
     load() {Object.assign(this,build(this.level));this.traced=new Set();this.spawn();}
     spawn() {
       this.player=actor("1,5","right");this.seeker=actor("11,0","left");
       this.queued=null;this.lastRail=null;this.gap=null;this.grace=1.4;
+      this.reversing=false;this.arrivedFrom=null;this.visualOffset=[0,0];
     }
     start() {
       if(this.state==="over") this.reset();
       if(this.state==="clear"){this.level++;this.load();}
       if(this.state==="caught") this.spawn();
+      if(this.practice) this.practiced=true;
       this.state="playing";this.event("start");
     }
-    steer(dir) {if(this.state==="playing" && directions[dir]) this.queued=dir;}
+    setScheme(scheme) {
+      this.scheme=scheme==="first"?"first":"third";
+      this.queued=null;
+    }
+    togglePractice() {
+      this.practice=!this.practice;
+      if(this.practice && this.state!=="ready" && this.state!=="over") this.practiced=true;
+    }
+    turnDirection(input) {
+      return this.scheme==="first" ? rotate(this.player.dir,input==="left"?-1:1) : input;
+    }
+    steer(input) {
+      if(this.state!=="playing" || !directions[input]) return;
+      const relative=this.scheme==="first", p=this.player;
+      if(relative && input!=="left" && input!=="right") return;
+      this.queued=input;
+      this.turnUntil=performance.now()+1000;
+      if(!p.to){this.departPlayer();return;}
+      const dir=this.turnDirection(input);
+      if(!relative && dir===rotate(p.dir,2)){
+        if(p.t===0){p.to=null;this.departPlayer();return;}
+        [p.at,p.to]=[p.to,p.at];p.t=1-p.t;p.dir=dir;
+        this.reversing=!this.reversing;this.queued=null;return;
+      }
+      if(this.reversing || p.t>.3 || dir===p.dir || dir===rotate(p.dir,2)) return;
+      const next=this.exit(p.at,dir);
+      if(!next || (relative && next===this.arrivedFrom)) return;
+      const old=this.pos(p);
+      p.to=next;p.dir=dir;this.queued=null;
+      const now=this.pos(p);
+      this.visualOffset[0]+=old[0]-now[0];this.visualOffset[1]+=old[1]-now[1];
+    }
+    departPlayer() {
+      const p=this.player, relative=this.scheme==="first";
+      if(relative && performance.now()>=this.turnUntil) this.queued=null;
+      let dir=p.dir;
+      if(this.queued && this.exit(p.at,this.turnDirection(this.queued))){
+        dir=this.turnDirection(this.queued);this.queued=null;
+      }else if(relative && !this.exit(p.at,dir)){
+        const sides=[rotate(dir,-1),rotate(dir,1)].filter(d=>this.exit(p.at,d));
+        if(sides.length!==1) return;
+        dir=sides[0];
+      }
+      const next=this.exit(p.at,dir);
+      if(next){p.to=next;p.dir=dir;}
+    }
     cut() {
       if(this.state!=="playing" || this.gap || !this.lastRail) return false;
       for(const a of [this.player,this.seeker]) if(a.to && railId(a.at,a.to)===this.lastRail) return false;
@@ -170,18 +233,16 @@ const Circuit = (() => {
     move(a,distance,isPlayer) {
       while(distance>0 && this.state==="playing"){
         if(!a.to){
-          let dir=a.dir;
-          if(isPlayer){
-            if(this.queued && this.exit(a.at,this.queued)){dir=this.queued;this.queued=null;}
-          }else dir=this.chase();
-          a.to=this.exit(a.at,dir);
+          if(isPlayer) this.departPlayer();
+          else {const dir=this.chase();a.to=this.exit(a.at,dir);if(a.to) a.dir=dir;}
           if(!a.to) return;
-          a.dir=dir;
         }
         const step=Math.min(distance,1-a.t);a.t+=step;distance-=step;
         if(a.t>=1){
-          const id=railId(a.at,a.to);a.at=a.to;a.to=null;a.t=0;
+          const previous=a.at,id=railId(previous,a.to);a.at=a.to;a.to=null;a.t=0;
           if(isPlayer){
+            this.arrivedFrom=previous;
+            if(this.reversing){this.reversing=false;continue;}
             this.lastRail=id;
             if(!this.traced.has(id)){
               this.traced.add(id);this.score+=10;this.event("rail");
@@ -196,6 +257,10 @@ const Circuit = (() => {
       return [p.x+(q.x-p.x)*a.t,p.y+(q.y-p.y)*a.t];
     }
     step(dt) {
+      if(this.state==="caught" && this.scheme==="first"){
+        this.respawnIn-=dt;
+        if(this.respawnIn<=0) this.start();
+      }
       if(this.state!=="playing")return;
       if(this.gap){this.gap.time-=dt;if(this.gap.time<=0){this.gap=null;this.event("repair");}}
       this.grace=Math.max(0,this.grace-dt);
@@ -203,8 +268,8 @@ const Circuit = (() => {
       if(this.state!=="playing" || this.grace>0)return;
       this.move(this.seeker,dt*Math.min(3.25,2.02+.15*(this.level-1)),false);
       const p=this.pos(this.player),s=this.pos(this.seeker);
-      if(Math.hypot(p[0]-s[0],p[1]-s[1])<.3){
-        this.lives--;this.state=this.lives?"caught":"over";this.event("hit");
+      if(!this.practice && Math.hypot(p[0]-s[0],p[1]-s[1])<.3){
+        this.lives--;this.state=this.lives?"caught":"over";this.respawnIn=1;this.event("hit");
       }
     }
     get name(){return names[(this.level-1)%names.length];}
@@ -267,6 +332,15 @@ const game=new Circuit.Game(onEvent);
 function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
 let best=Number(read("gapper.best",0))||0, soundOn=read("gapper.sound","on")==="on";
+game.setScheme(read("gapper.controls","third"));
+let typed="",pauseBeforeWord=null;
+function finishScore(){
+  if(!game.practiced && game.score>best){
+    best=Math.max(game.score,Number(read("gapper.best",0))||0);
+    save("gapper.best",best);
+  }
+}
+window.addEventListener("pagehide",e=>{if(!e.persisted)finishScore();});
 let audioCtx,boardCache=null,bursts=[],elapsed=0,prevTime=0,guidePaused=false;
 const canvas=$("board"),ctx=canvas.getContext("2d"),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function unlock(){if(!soundOn)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});}catch{}}
@@ -284,7 +358,7 @@ function onEvent(ev){
   if(ev==="gap"){tone(850,120,.2,"sawtooth",0,.025);}
   if(ev==="hit"){tone(155,34,.45,"sawtooth");burst(game.pos(game.player),"#ff6bab",28);}
   if(ev==="clear"){[0,4,7,12].forEach((n,i)=>tone(330*2**(n/12),660,.22,"triangle",i*.09));}
-  if(game.score>best){best=game.score;save("gapper.best",best);}
+  if(game.state==="over") finishScore();
   sync();
 }
 function burst(p,color,n){if(reduced)return;for(let i=0;i<n;i++)bursts.push({p,color,age:0,dx:(Math.random()-.5)*90,dy:(Math.random()-.5)*90});}
@@ -298,7 +372,8 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
-  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(best).padStart(6,"0");
+  const eligibleBest=game.practiced?best:Math.max(best,game.score);
+  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(eligibleBest).padStart(6,"0");
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;
   $("lives").innerHTML=Array.from({length:3},(_,i)=>'<span class="'+(i>=game.lives?"spent":"")+'">'+icon("heart")+'</span>').join("");
   $("lives").setAttribute("aria-label",game.lives+" lives");
@@ -306,36 +381,77 @@ function sync(){
   $("percent").textContent=percent+"%";$("trace-bars").innerHTML=Array.from({length:12},(_,i)=>'<i class="'+(i<Math.floor(percent*12/100)?"lit":"")+'"></i>').join("");
   if($("status").textContent!==state)$("status").textContent=state;
   $("message").textContent=game.gap && game.state==="playing"?"Gap open. The broken rail will repair shortly.":msg;
+  if(game.state==="caught" && game.scheme==="first") $("message").textContent="Your next ship launches automatically.";
+  if(game.state==="over" && game.practiced) $("message").textContent="Practice runs do not count toward your best score.";
+  $("pax").hidden=!game.practice;
+  $("steering").hidden=!(game.state==="ready" || game.state==="paused" || game.state==="over");
   $("action-label").textContent=action;$("action").firstElementChild.innerHTML=icon(game.state==="playing"?"pause":"play");
 }
 function updateSound(){$("sound-label").textContent=soundOn?"Sound on":"Sound off";$("sound").setAttribute("aria-pressed",soundOn);$("sound").firstElementChild.innerHTML=icon(soundOn?"sound":"mute");}
 function act(){
+  pauseBeforeWord=null;
   unlock();
   if(game.state==="playing"){game.state="paused";sync();}
   else if(game.state==="paused"){game.state="playing";sync();}
   else game.start();
   canvas.focus({preventScroll:true});
 }
+function showScheme(){
+  const first=game.scheme==="first";
+  const hint=first?"Use Left/Right or A/D to turn relative to your ship.":"Use the arrow keys or WASD to steer in screen directions.";
+  document.body.classList.toggle("first-person",first);
+  document.querySelectorAll("[data-scheme]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.scheme===game.scheme));
+  $("scheme-hint").textContent=hint;
+  $("guide").querySelector("dd").textContent=hint+(first?" Your ship follows corners automatically.":" You can queue a turn before a junction.");
+  $("board").setAttribute("aria-label","Rail maze. "+hint+" Press Space to cut a gap.");
+  document.querySelector(".controls .key-help > span:last-child").textContent=first?"Turn":"Move";
+  for(const d of ["left","right"])document.querySelector('[data-dir="'+d+'"]').setAttribute("aria-label",(first?"Turn ":"Move ")+d);
+}
+document.querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
+  game.setScheme(b.dataset.scheme);save("gapper.controls",game.scheme);showScheme();
+});
 $("action").onclick=act;
 $("sound").onclick=()=>{soundOn=!soundOn;save("gapper.sound",soundOn?"on":"off");updateSound();unlock();tone(500,680);};
-$("help").onclick=()=>{guidePaused=game.state==="playing";if(guidePaused){game.state="paused";sync();}$("guide").showModal();};
+$("help").onclick=()=>{pauseBeforeWord=null;guidePaused=game.state==="playing";if(guidePaused){game.state="paused";sync();}$("guide").showModal();};
 $("got-it").onclick=()=>$("guide").close();
 $("guide").addEventListener("close",()=>{if(guidePaused && !document.hidden){game.state="playing";sync();}guidePaused=false;});
 const keyDirs={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"};
 window.addEventListener("keydown",e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey||$("guide").open)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
-  if(keyDirs[k]){e.preventDefault();game.steer(keyDirs[k]);}
+  if(!e.repeat && e.key.length===1){
+    typed=(typed+k).slice(-3);
+    if(k==="p")pauseBeforeWord=null;
+    if(typed==="pax"){
+      game.togglePractice();
+      if(pauseBeforeWord && (game.state==="paused" || game.state==="playing")) game.state=pauseBeforeWord;
+      pauseBeforeWord=null;sync();return;
+    }
+  }
+  if($("guide").open)return;
+  if(keyDirs[k]){e.preventDefault();if(!e.repeat)game.steer(keyDirs[k]);}
   else if(k===" " && (game.state==="playing" || e.target.tagName!=="BUTTON")){e.preventDefault();if(!e.repeat)game.cut();}
-  else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat)act();}
+  else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat){const before=game.state;act();pauseBeforeWord=before;}}
   else if(k==="Enter" && e.target.tagName!=="BUTTON"){e.preventDefault();if(!e.repeat)act();}
 });
 document.querySelectorAll("[data-dir]").forEach(b=>b.onpointerdown=e=>{e.preventDefault();game.steer(b.dataset.dir);});
 $("touch-gap").onpointerdown=e=>{e.preventDefault();game.cut();};
 let touchOrigin=null;
-canvas.onpointerdown=e=>{touchOrigin=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);};
-canvas.onpointerup=e=>{if(!touchOrigin)return;const dx=e.clientX-touchOrigin[0],dy=e.clientY-touchOrigin[1];touchOrigin=null;if(Math.max(Math.abs(dx),Math.abs(dy))>10)game.steer(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));};
-document.addEventListener("visibilitychange",()=>{if(document.hidden && game.state==="playing"){game.state="paused";sync();}});
+canvas.onpointerdown=e=>{
+  if(game.scheme==="first" || !e.isPrimary)return;
+  touchOrigin=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);
+};
+function swipe(e){
+  if(!touchOrigin || !e.isPrimary)return;
+  const dx=e.clientX-touchOrigin[0],dy=e.clientY-touchOrigin[1];
+  if(Math.max(Math.abs(dx),Math.abs(dy))<10)return;
+  touchOrigin=null;
+  game.steer(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));
+}
+canvas.onpointermove=swipe;
+canvas.onpointerup=e=>{if(e.isPrimary){swipe(e);touchOrigin=null;}};
+canvas.onpointercancel=e=>{if(e.isPrimary)touchOrigin=null;};
+document.addEventListener("visibilitychange",()=>{if(document.hidden){pauseBeforeWord=null;if(game.state==="playing"){game.state="paused";sync();}}});
 $("expand").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$("expand").lastElementChild.textContent="Fullscreen unavailable";}};
 document.addEventListener("fullscreenchange",()=>{$("expand").lastElementChild.textContent=document.fullscreenElement?"Exit fullscreen":"Fullscreen";});
 if(!document.fullscreenEnabled)$("expand").hidden=true;
@@ -415,15 +531,17 @@ function sprite(isShip,pos,dir,t){
 function frame(now){
   const dt=Math.min(.05,(now-(prevTime||now))/1000);prevTime=now;
   if(!document.hidden){
-    elapsed+=dt;game.step(dt);
+    elapsed+=dt;if(!$("guide").open)game.step(dt);
     if(W>0 && H>0){
       if(!boardCache)rails();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(boardCache,0,0);ctx.setTransform(scale,0,0,scale,0,0);
       const ready=game.state==="ready";
       if(!ready && game.player.to){
-        const from=point(game.player.at),to=xy(game.pos(game.player));
+        const from=point(game.reversing?game.player.to:game.player.at),to=xy(game.pos(game.player));
         ctx.save();ctx.beginPath();ctx.moveTo(...from);ctx.lineTo(...to);ctx.strokeStyle="#7fffe9";ctx.lineWidth=W<600?3:4;ctx.shadowBlur=8;ctx.shadowColor="#3affdf";ctx.stroke();ctx.restore();
       }
-      sprite(true,ready?[5,2]:game.pos(game.player),ready?"right":game.player.dir,elapsed);
+      const playerPos=game.pos(game.player),decay=Math.exp(-30*dt);
+      for(let axis=0;axis<2;axis++){game.visualOffset[axis]*=decay;playerPos[axis]+=game.visualOffset[axis];}
+      sprite(true,ready?[5,2]:playerPos,ready?"right":game.player.dir,elapsed);
       sprite(false,ready?[10.5,3]:game.pos(game.seeker),game.seeker.dir,elapsed);
       for(const s of bursts){s.age+=dt;const [x,y]=xy(s.p);ctx.globalAlpha=Math.max(0,1-s.age/.5);ctx.fillStyle=s.color;ctx.fillRect(x+s.dx*s.age,y+s.dy*s.age,2,2);}
       ctx.globalAlpha=1;bursts=bursts.filter(s=>s.age<.5);
@@ -431,7 +549,7 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-new ResizeObserver(resize).observe(canvas);resize();sync();updateSound();requestAnimationFrame(frame);
+new ResizeObserver(resize).observe(canvas);resize();showScheme();sync();updateSound();requestAnimationFrame(frame);
 </script>
 </body>
 </html>
