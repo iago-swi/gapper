@@ -10,7 +10,7 @@ image or audio files and no libraries.
 
 **[Play it in your browser](https://iago-swi.github.io/gapper/Claude/)**
 
-![Lightloom in play on the third weave, Verdigris: eight lit squares in blue-green glass, the shuttle at the centre of a shockwave, and two pink moths closing in](screenshot.jpg)
+![Lightloom in play on the third weave, Verdigris: eight lit squares in blue-green glass, the shuttle at the center of a shockwave, and two pink moths closing in](screenshot.jpg)
 
 ## Run it
 
@@ -39,7 +39,7 @@ its four threads are woven. Light every square to finish the weave.
 On a touch screen, swipe to steer.
 
 Moths travel along the same threads and touching one costs a spark. You start with
-three sparks. Your defence is the loom itself: a freshly lit square stuns every moth
+three sparks. Your defense is the loom itself: a freshly lit square stuns every moth
 within two squares of it for 1.8 seconds, and a stunned moth is harmless. Lighting
 squares in quick succession builds a chain that multiplies their score. The best
 score is kept in the browser.
