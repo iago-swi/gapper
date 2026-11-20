@@ -1,6 +1,8 @@
 "use strict";
 const Circuit = (() => {
   const directions = {right:[1,0], left:[-1,0], up:[0,-1], down:[0,1]};
+  const headings = ["up","right","down","left"];
+  const rotate = (dir,steps) => headings[(headings.indexOf(dir)+steps+4)%4];
   const names = ["Midnight grid", "Violet relay", "Ghost junction", "Afterburn", "Night drive", "Last light"];
   const key = (x,y) => x + "," + y;
   const railId = (a,b) => [a,b].sort().join("/");
@@ -40,20 +42,67 @@ const Circuit = (() => {
   }
   function actor(id,dir) {return {at:id,to:null,t:0,dir};}
   class Game {
-    constructor(event=()=>{}) {this.event=event;this.reset();}
-    reset() {this.score=0;this.lives=3;this.level=1;this.load();this.state="ready";}
+    constructor(event=()=>{}) {this.event=event;this.scheme="third";this.practice=false;this.reset();}
+    reset() {this.score=0;this.lives=3;this.level=1;this.practiced=false;this.load();this.state="ready";}
     load() {Object.assign(this,build(this.level));this.traced=new Set();this.spawn();}
     spawn() {
       this.player=actor("1,5","right");this.seeker=actor("11,0","left");
       this.queued=null;this.lastRail=null;this.gap=null;this.grace=1.4;
+      this.reversing=false;this.arrivedFrom=null;this.visualOffset=[0,0];
     }
     start() {
       if(this.state==="over") this.reset();
       if(this.state==="clear"){this.level++;this.load();}
       if(this.state==="caught") this.spawn();
+      if(this.practice) this.practiced=true;
       this.state="playing";this.event("start");
     }
-    steer(dir) {if(this.state==="playing" && directions[dir]) this.queued=dir;}
+    setScheme(scheme) {
+      this.scheme=scheme==="first"?"first":"third";
+      this.queued=null;
+    }
+    togglePractice() {
+      this.practice=!this.practice;
+      if(this.practice && this.state!=="ready" && this.state!=="over") this.practiced=true;
+    }
+    turnDirection(input) {
+      return this.scheme==="first" ? rotate(this.player.dir,input==="left"?-1:1) : input;
+    }
+    steer(input) {
+      if(this.state!=="playing" || !directions[input]) return;
+      const relative=this.scheme==="first", p=this.player;
+      if(relative && input!=="left" && input!=="right") return;
+      this.queued=input;
+      this.turnUntil=performance.now()+1000;
+      if(!p.to){this.departPlayer();return;}
+      const dir=this.turnDirection(input);
+      if(!relative && dir===rotate(p.dir,2)){
+        if(p.t===0){p.to=null;this.departPlayer();return;}
+        [p.at,p.to]=[p.to,p.at];p.t=1-p.t;p.dir=dir;
+        this.reversing=!this.reversing;this.queued=null;return;
+      }
+      if(this.reversing || p.t>.3 || dir===p.dir || dir===rotate(p.dir,2)) return;
+      const next=this.exit(p.at,dir);
+      if(!next || (relative && next===this.arrivedFrom)) return;
+      const old=this.pos(p);
+      p.to=next;p.dir=dir;this.queued=null;
+      const now=this.pos(p);
+      this.visualOffset[0]+=old[0]-now[0];this.visualOffset[1]+=old[1]-now[1];
+    }
+    departPlayer() {
+      const p=this.player, relative=this.scheme==="first";
+      if(relative && performance.now()>=this.turnUntil) this.queued=null;
+      let dir=p.dir;
+      if(this.queued && this.exit(p.at,this.turnDirection(this.queued))){
+        dir=this.turnDirection(this.queued);this.queued=null;
+      }else if(relative && !this.exit(p.at,dir)){
+        const sides=[rotate(dir,-1),rotate(dir,1)].filter(d=>this.exit(p.at,d));
+        if(sides.length!==1) return;
+        dir=sides[0];
+      }
+      const next=this.exit(p.at,dir);
+      if(next){p.to=next;p.dir=dir;}
+    }
     cut() {
       if(this.state!=="playing" || this.gap || !this.lastRail) return false;
       for(const a of [this.player,this.seeker]) if(a.to && railId(a.at,a.to)===this.lastRail) return false;
@@ -78,18 +127,16 @@ const Circuit = (() => {
     move(a,distance,isPlayer) {
       while(distance>0 && this.state==="playing"){
         if(!a.to){
-          let dir=a.dir;
-          if(isPlayer){
-            if(this.queued && this.exit(a.at,this.queued)){dir=this.queued;this.queued=null;}
-          }else dir=this.chase();
-          a.to=this.exit(a.at,dir);
+          if(isPlayer) this.departPlayer();
+          else {const dir=this.chase();a.to=this.exit(a.at,dir);if(a.to) a.dir=dir;}
           if(!a.to) return;
-          a.dir=dir;
         }
         const step=Math.min(distance,1-a.t);a.t+=step;distance-=step;
         if(a.t>=1){
-          const id=railId(a.at,a.to);a.at=a.to;a.to=null;a.t=0;
+          const previous=a.at,id=railId(previous,a.to);a.at=a.to;a.to=null;a.t=0;
           if(isPlayer){
+            this.arrivedFrom=previous;
+            if(this.reversing){this.reversing=false;continue;}
             this.lastRail=id;
             if(!this.traced.has(id)){
               this.traced.add(id);this.score+=10;this.event("rail");
@@ -104,6 +151,10 @@ const Circuit = (() => {
       return [p.x+(q.x-p.x)*a.t,p.y+(q.y-p.y)*a.t];
     }
     step(dt) {
+      if(this.state==="caught" && this.scheme==="first"){
+        this.respawnIn-=dt;
+        if(this.respawnIn<=0) this.start();
+      }
       if(this.state!=="playing")return;
       if(this.gap){this.gap.time-=dt;if(this.gap.time<=0){this.gap=null;this.event("repair");}}
       this.grace=Math.max(0,this.grace-dt);
@@ -111,8 +162,8 @@ const Circuit = (() => {
       if(this.state!=="playing" || this.grace>0)return;
       this.move(this.seeker,dt*Math.min(3.25,2.02+.15*(this.level-1)),false);
       const p=this.pos(this.player),s=this.pos(this.seeker);
-      if(Math.hypot(p[0]-s[0],p[1]-s[1])<.3){
-        this.lives--;this.state=this.lives?"caught":"over";this.event("hit");
+      if(!this.practice && Math.hypot(p[0]-s[0],p[1]-s[1])<.3){
+        this.lives--;this.state=this.lives?"caught":"over";this.respawnIn=1;this.event("hit");
       }
     }
     get name(){return names[(this.level-1)%names.length];}

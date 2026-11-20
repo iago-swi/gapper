@@ -53,6 +53,15 @@ const game=new Circuit.Game(onEvent);
 function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
 let best=Number(read("gapper.best",0))||0, soundOn=read("gapper.sound","on")==="on";
+game.setScheme(read("gapper.controls","third"));
+let typed="",pauseBeforeWord=null;
+function finishScore(){
+  if(!game.practiced && game.score>best){
+    best=Math.max(game.score,Number(read("gapper.best",0))||0);
+    save("gapper.best",best);
+  }
+}
+window.addEventListener("pagehide",e=>{if(!e.persisted)finishScore();});
 let audioCtx,boardCache=null,bursts=[],elapsed=0,prevTime=0,guidePaused=false;
 const canvas=$("board"),ctx=canvas.getContext("2d"),reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function unlock(){if(!soundOn)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume().catch(()=>{});}catch{}}
@@ -70,7 +79,7 @@ function onEvent(ev){
   if(ev==="gap"){tone(850,120,.2,"sawtooth",0,.025);}
   if(ev==="hit"){tone(155,34,.45,"sawtooth");burst(game.pos(game.player),"#ff6bab",28);}
   if(ev==="clear"){[0,4,7,12].forEach((n,i)=>tone(330*2**(n/12),660,.22,"triangle",i*.09));}
-  if(game.score>best){best=game.score;save("gapper.best",best);}
+  if(game.state==="over") finishScore();
   sync();
 }
 function burst(p,color,n){if(reduced)return;for(let i=0;i<n;i++)bursts.push({p,color,age:0,dx:(Math.random()-.5)*90,dy:(Math.random()-.5)*90});}
@@ -84,7 +93,8 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
-  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(best).padStart(6,"0");
+  const eligibleBest=game.practiced?best:Math.max(best,game.score);
+  $("score").textContent=String(game.score).padStart(6,"0");$("best").textContent=String(eligibleBest).padStart(6,"0");
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;
   $("lives").innerHTML=Array.from({length:3},(_,i)=>'<span class="'+(i>=game.lives?"spent":"")+'">'+icon("heart")+'</span>').join("");
   $("lives").setAttribute("aria-label",game.lives+" lives");
@@ -92,36 +102,77 @@ function sync(){
   $("percent").textContent=percent+"%";$("trace-bars").innerHTML=Array.from({length:12},(_,i)=>'<i class="'+(i<Math.floor(percent*12/100)?"lit":"")+'"></i>').join("");
   if($("status").textContent!==state)$("status").textContent=state;
   $("message").textContent=game.gap && game.state==="playing"?"Gap open. The broken rail will repair shortly.":msg;
+  if(game.state==="caught" && game.scheme==="first") $("message").textContent="Your next ship launches automatically.";
+  if(game.state==="over" && game.practiced) $("message").textContent="Practice runs do not count toward your best score.";
+  $("pax").hidden=!game.practice;
+  $("steering").hidden=!(game.state==="ready" || game.state==="paused" || game.state==="over");
   $("action-label").textContent=action;$("action").firstElementChild.innerHTML=icon(game.state==="playing"?"pause":"play");
 }
 function updateSound(){$("sound-label").textContent=soundOn?"Sound on":"Sound off";$("sound").setAttribute("aria-pressed",soundOn);$("sound").firstElementChild.innerHTML=icon(soundOn?"sound":"mute");}
 function act(){
+  pauseBeforeWord=null;
   unlock();
   if(game.state==="playing"){game.state="paused";sync();}
   else if(game.state==="paused"){game.state="playing";sync();}
   else game.start();
   canvas.focus({preventScroll:true});
 }
+function showScheme(){
+  const first=game.scheme==="first";
+  const hint=first?"Use Left/Right or A/D to turn relative to your ship.":"Use the arrow keys or WASD to steer in screen directions.";
+  document.body.classList.toggle("first-person",first);
+  document.querySelectorAll("[data-scheme]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.scheme===game.scheme));
+  $("scheme-hint").textContent=hint;
+  $("guide").querySelector("dd").textContent=hint+(first?" Your ship follows corners automatically.":" You can queue a turn before a junction.");
+  $("board").setAttribute("aria-label","Rail maze. "+hint+" Press Space to cut a gap.");
+  document.querySelector(".controls .key-help > span:last-child").textContent=first?"Turn":"Move";
+  for(const d of ["left","right"])document.querySelector('[data-dir="'+d+'"]').setAttribute("aria-label",(first?"Turn ":"Move ")+d);
+}
+document.querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
+  game.setScheme(b.dataset.scheme);save("gapper.controls",game.scheme);showScheme();
+});
 $("action").onclick=act;
 $("sound").onclick=()=>{soundOn=!soundOn;save("gapper.sound",soundOn?"on":"off");updateSound();unlock();tone(500,680);};
-$("help").onclick=()=>{guidePaused=game.state==="playing";if(guidePaused){game.state="paused";sync();}$("guide").showModal();};
+$("help").onclick=()=>{pauseBeforeWord=null;guidePaused=game.state==="playing";if(guidePaused){game.state="paused";sync();}$("guide").showModal();};
 $("got-it").onclick=()=>$("guide").close();
 $("guide").addEventListener("close",()=>{if(guidePaused && !document.hidden){game.state="playing";sync();}guidePaused=false;});
 const keyDirs={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"};
 window.addEventListener("keydown",e=>{
-  if(e.metaKey||e.ctrlKey||e.altKey||$("guide").open)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
-  if(keyDirs[k]){e.preventDefault();game.steer(keyDirs[k]);}
+  if(!e.repeat && e.key.length===1){
+    typed=(typed+k).slice(-3);
+    if(k==="p")pauseBeforeWord=null;
+    if(typed==="pax"){
+      game.togglePractice();
+      if(pauseBeforeWord && (game.state==="paused" || game.state==="playing")) game.state=pauseBeforeWord;
+      pauseBeforeWord=null;sync();return;
+    }
+  }
+  if($("guide").open)return;
+  if(keyDirs[k]){e.preventDefault();if(!e.repeat)game.steer(keyDirs[k]);}
   else if(k===" " && (game.state==="playing" || e.target.tagName!=="BUTTON")){e.preventDefault();if(!e.repeat)game.cut();}
-  else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat)act();}
+  else if(k==="p" && ["playing","paused"].includes(game.state)){e.preventDefault();if(!e.repeat){const before=game.state;act();pauseBeforeWord=before;}}
   else if(k==="Enter" && e.target.tagName!=="BUTTON"){e.preventDefault();if(!e.repeat)act();}
 });
 document.querySelectorAll("[data-dir]").forEach(b=>b.onpointerdown=e=>{e.preventDefault();game.steer(b.dataset.dir);});
 $("touch-gap").onpointerdown=e=>{e.preventDefault();game.cut();};
 let touchOrigin=null;
-canvas.onpointerdown=e=>{touchOrigin=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);};
-canvas.onpointerup=e=>{if(!touchOrigin)return;const dx=e.clientX-touchOrigin[0],dy=e.clientY-touchOrigin[1];touchOrigin=null;if(Math.max(Math.abs(dx),Math.abs(dy))>10)game.steer(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));};
-document.addEventListener("visibilitychange",()=>{if(document.hidden && game.state==="playing"){game.state="paused";sync();}});
+canvas.onpointerdown=e=>{
+  if(game.scheme==="first" || !e.isPrimary)return;
+  touchOrigin=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);
+};
+function swipe(e){
+  if(!touchOrigin || !e.isPrimary)return;
+  const dx=e.clientX-touchOrigin[0],dy=e.clientY-touchOrigin[1];
+  if(Math.max(Math.abs(dx),Math.abs(dy))<10)return;
+  touchOrigin=null;
+  game.steer(Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up"));
+}
+canvas.onpointermove=swipe;
+canvas.onpointerup=e=>{if(e.isPrimary){swipe(e);touchOrigin=null;}};
+canvas.onpointercancel=e=>{if(e.isPrimary)touchOrigin=null;};
+document.addEventListener("visibilitychange",()=>{if(document.hidden){pauseBeforeWord=null;if(game.state==="playing"){game.state="paused";sync();}}});
 $("expand").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$("expand").lastElementChild.textContent="Fullscreen unavailable";}};
 document.addEventListener("fullscreenchange",()=>{$("expand").lastElementChild.textContent=document.fullscreenElement?"Exit fullscreen":"Fullscreen";});
 if(!document.fullscreenEnabled)$("expand").hidden=true;
@@ -201,15 +252,17 @@ function sprite(isShip,pos,dir,t){
 function frame(now){
   const dt=Math.min(.05,(now-(prevTime||now))/1000);prevTime=now;
   if(!document.hidden){
-    elapsed+=dt;game.step(dt);
+    elapsed+=dt;if(!$("guide").open)game.step(dt);
     if(W>0 && H>0){
       if(!boardCache)rails();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(boardCache,0,0);ctx.setTransform(scale,0,0,scale,0,0);
       const ready=game.state==="ready";
       if(!ready && game.player.to){
-        const from=point(game.player.at),to=xy(game.pos(game.player));
+        const from=point(game.reversing?game.player.to:game.player.at),to=xy(game.pos(game.player));
         ctx.save();ctx.beginPath();ctx.moveTo(...from);ctx.lineTo(...to);ctx.strokeStyle="#7fffe9";ctx.lineWidth=W<600?3:4;ctx.shadowBlur=8;ctx.shadowColor="#3affdf";ctx.stroke();ctx.restore();
       }
-      sprite(true,ready?[5,2]:game.pos(game.player),ready?"right":game.player.dir,elapsed);
+      const playerPos=game.pos(game.player),decay=Math.exp(-30*dt);
+      for(let axis=0;axis<2;axis++){game.visualOffset[axis]*=decay;playerPos[axis]+=game.visualOffset[axis];}
+      sprite(true,ready?[5,2]:playerPos,ready?"right":game.player.dir,elapsed);
       sprite(false,ready?[10.5,3]:game.pos(game.seeker),game.seeker.dir,elapsed);
       for(const s of bursts){s.age+=dt;const [x,y]=xy(s.p);ctx.globalAlpha=Math.max(0,1-s.age/.5);ctx.fillStyle=s.color;ctx.fillRect(x+s.dx*s.age,y+s.dy*s.age,2,2);}
       ctx.globalAlpha=1;bursts=bursts.filter(s=>s.age<.5);
@@ -217,4 +270,4 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-new ResizeObserver(resize).observe(canvas);resize();sync();updateSound();requestAnimationFrame(frame);
+new ResizeObserver(resize).observe(canvas);resize();showScheme();sync();updateSound();requestAnimationFrame(frame);

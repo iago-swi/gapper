@@ -10,9 +10,12 @@ Trace every rail while a seeker closes in. The cyan runner keeps moving in its c
 
 ## Controls
 
-| Action | Keyboard | Touch |
+Choose a steering scheme before starting or while paused. The choice takes effect immediately.
+
+| Scheme or action | Keyboard | Touch |
 | --- | --- | --- |
-| Steer or queue a turn | Arrow keys or WASD | Direction pad or swipe the playfield |
+| Third person (default) | Arrow keys or WASD point in screen directions. The opposite direction reverses the ship mid-rail. | Four-way pad or swipe the playfield |
+| First person | Left/Right or A/D turn relative to the ship. Up/Down and W/S have no effect. | Tap the left or right pad button to turn on touch-down |
 | Break the last completed rail | Space | Cut gap |
 | Pause or resume | P | Pause or Resume |
 
@@ -54,7 +57,11 @@ The six names repeat from level 7. Difficulty follows the level number, so retur
 
 Each actor stores its departure node, destination node, heading and a fraction `t` between 0 and 1. The runner travels at **3.6 rails per second**. Each frame gives it a distance budget equal to speed times elapsed time. Reaching a node consumes the distance to that node, records the crossing and leaves any remaining budget for the next rail. Interpolating between endpoints gives the renderer a smooth position throughout the move.
 
-The most recent direction input occupies one queue slot. Press Up midway along a horizontal run and the runner continues straight until it reaches a node with an open upward exit. A later input replaces the queued one. If the current heading ends at a corner, the runner waits there for a legal turn. Reversals also take effect at nodes.
+Third-person steering handles the initial keydown immediately and ignores auto-repeat. The latest screen direction stays queued until an exit opens or another direction replaces it. Pressing the opposite direction mid-rail reverses the ship immediately. Returning to the departure node leaves a partially crossed rail unscored.
+
+Both schemes allow a late sideways turn up to **0.3 of a segment** after a node. If the side exit was open there, the runner transfers to that rail at the same distance from the node. Collision checks use the new position immediately. The sprite carries the difference between the old and new positions as a visual offset, multiplied each frame by `exp(-30 × dt)` with `dt` in seconds. About 5% of the offset remains after 0.1 seconds. The abandoned crossing earns no points, and the assist stays off while retracing a segment in reverse.
+
+In first person the ship sets off automatically on launch and on each new life. A relative turn stays queued for one second. At each node the runner tries that turn, then straight ahead, then a sole open side exit. If straight is blocked and both sides are open, the runner waits with its arrival heading intact. It never chooses a U-turn.
 
 `requestAnimationFrame` supplies the clock. Each update consumes at most 50 milliseconds of elapsed time, limiting how far either actor advances after a slow frame. Positions, speed and collision distance use grid units, so resizing the cabinet changes how the board is drawn while preserving the rules.
 
@@ -76,7 +83,7 @@ The seeker starts at 2.02 rails per second and gains 0.15 per level, up to 3.25 
 
 | Event | What carries forward |
 | --- | --- |
-| Caught with a life remaining | **Continue** resets both ships to their starting nodes and clears the gap. The score and traced rails carry over. |
+| Caught with a life remaining | Both ships return to their starting nodes and the gap clears. First person relaunches after one second. **Continue** launches immediately. The score and traced rails carry over. |
 | Last rail traced | **Next level** loads the next layout with a fresh trace set. Score and remaining lives carry over. Clearing Midnight grid earns 860 points in total, including the 100-point level bonus. |
 | Last life lost | **Play again** starts at level 1 with three lives and zero points. The personal best survives. |
 
@@ -92,8 +99,14 @@ The skyline above the board is a separate PNG. The chrome Gapper title is drawn 
 
 Each sound uses a Web Audio oscillator and a gain envelope with an 8 ms attack. A newly traced rail plays a 60 ms sine tone whose starting pitch cycles through five values. Cutting a gap sweeps a sawtooth from 850 to 120 Hz over 200 ms. A collision drops from 155 to 34 Hz over 450 ms. Clearing the level schedules four triangle tones 90 ms apart, starting on the root, major third, fifth and octave. The browser creates or resumes the audio context after a player action.
 
-Keyboard turns, direction-pad presses and swipes all reach the same steering method. A swipe must exceed 10 CSS pixels on at least one axis, and its dominant axis determines the turn. Opening the instructions pauses a live round. Switching tabs also pauses the simulation, including the gap timer. The reduced-motion preference suppresses particle bursts and the animated exhaust flame.
+Keyboard turns and pad presses share the same steering method. In third person a swipe fires as soon as either axis reaches 10 CSS pixels, using the dominant axis. Opening the instructions pauses a live round. Switching tabs also pauses the simulation, including the gap timer. The reduced-motion preference suppresses particle bursts and the animated exhaust flame.
 
-The browser stores the best score under `gapper.best` and the sound switch under `gapper.sound`. The live circuit stays in memory, so reloading starts a fresh run. If browser storage is unavailable, scoring and sound controls still work for the current session.
+The browser stores the best score under `gapper.best`, the sound switch under `gapper.sound`, and the steering choice under `gapper.controls` (`third` or `first`). The live circuit stays in memory, so reloading starts a fresh run. If browser storage is unavailable, the controls still work for the current session.
+
+<details><summary>Easter egg (spoiler)</summary>
+
+Type **PAX** on any screen to toggle practice. An olive branch appears while the seeker can chase you harmlessly. Completing the word restores the pause state from before its P key. Toggling practice off restores collisions. A run that used practice at any point is ineligible for the best score, even if practice was off at game over. Reloading switches practice off.
+
+</details>
 
 [Game history and gameplay screenshot](../README.md)
