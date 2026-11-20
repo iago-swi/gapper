@@ -133,6 +133,11 @@
           </button>
         </div>
 
+        <div class="title-best-row">
+          <span class="title-best-badge">BEST <strong id="title-best">000000</strong></span>
+          <button type="button" id="btn-highscores" class="hs-open-btn">High scores</button>
+        </div>
+
         <div class="title-footer">
           <span class="footer-tip">TIP: Seal all 4 corner chambers to trigger <strong>PRISM OVERDRIVE</strong> &amp; hunt Seekers!</span>
         </div>
@@ -201,37 +206,64 @@
       </div>
     </section>
 
+    <!-- High Scores Overlay (opened from Title Screen) -->
+    <section id="overlay-highscores" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="hs-title">
+      <div class="modal-card scores-modal">
+        <div class="modal-eyebrow accent-gold">LEADERBOARD</div>
+        <h2 id="hs-title" class="modal-title scores-modal-title">HIGH SCORES</h2>
+        <div id="hs-tabs" class="score-tabs hidden" role="tablist" aria-label="High score lists">
+          <button type="button" class="score-tab active" data-score-tab="device" role="tab" aria-selected="true">This device</button>
+          <button type="button" class="score-tab" data-score-tab="shared" role="tab" aria-selected="false">Everyone</button>
+        </div>
+        <div id="hs-list" class="scores-list" role="list"></div>
+        <p id="hs-msg" class="scores-msg hidden"></p>
+        <div class="modal-actions scores-actions">
+          <button type="button" id="btn-hs-back" class="secondary-btn">Back</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Game Over / Victory Overlay -->
     <section id="overlay-gameover" class="overlay hidden">
-      <div class="modal-card">
-        <div id="go-eyebrow" class="modal-eyebrow accent-crimson">SIGNAL LOST</div>
-        <h2 id="go-title" class="modal-title">GAME OVER</h2>
-        <div class="stats-grid">
-          <div class="stat-box">
-            <span class="stat-label">FINAL SCORE</span>
-            <span id="go-score" class="stat-val accent-gold">000000</span>
+      <div class="modal-card scores-modal go-modal">
+        <div class="go-header">
+          <div class="go-header-left">
+            <div id="go-eyebrow" class="modal-eyebrow accent-crimson">SIGNAL LOST</div>
+            <h2 id="go-title" class="modal-title scores-modal-title">GAME OVER</h2>
           </div>
-          <div class="stat-box">
-            <span class="stat-label">HIGH SCORE</span>
-            <span id="go-best" class="stat-val accent-cyan">000000</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">SECTOR REACHED</span>
-            <span id="go-stage" class="stat-val">01</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">CELLS SEALED</span>
-            <span id="go-cells" class="stat-val">0</span>
+          <div class="go-compact-stats">
+            <div class="go-mini-stat">
+              <span class="stat-label">SCORE</span>
+              <span id="go-score" class="stat-val accent-gold">000000</span>
+            </div>
+            <div class="go-mini-stat">
+              <span class="stat-label">SECTOR</span>
+              <span id="go-stage" class="stat-val">01</span>
+            </div>
           </div>
         </div>
-        <div id="go-new-best" class="new-best-pill hidden">NEW HIGH SCORE</div>
-        <p id="go-pax-note" class="go-pax-note hidden">Practice mode (PAX) was active during this run, so the score did not count toward your best score.</p>
-        <div class="modal-actions">
-          <button id="btn-retry" class="primary-btn">
+
+        <p id="go-status-line" class="go-status-line"></p>
+
+        <div id="go-tabs" class="score-tabs hidden" role="tablist" aria-label="High score lists">
+          <button type="button" class="score-tab active" data-score-tab="device" role="tab" aria-selected="true">This device</button>
+          <button type="button" class="score-tab" data-score-tab="shared" role="tab" aria-selected="false">Everyone</button>
+        </div>
+
+        <div id="go-list" class="scores-list" role="list"></div>
+        <p id="go-shared-msg" class="scores-msg hidden"></p>
+
+        <div id="go-initials-wrap" class="initials-wrap hidden">
+          <label for="go-initials" class="initials-label">Your initials</label>
+          <input id="go-initials" class="initials-input" type="text" maxlength="3" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="---" />
+        </div>
+
+        <div class="modal-actions go-actions-row">
+          <button type="button" id="btn-retry" class="primary-btn">
             <span class="btn-text">PLAY AGAIN</span>
             <span class="btn-hint">ENTER</span>
           </button>
-          <button id="btn-go-menu" class="ghost-btn">MAIN MENU</button>
+          <button type="button" id="btn-go-menu" class="ghost-btn">MAIN MENU</button>
         </div>
       </div>
     </section>
@@ -285,6 +317,7 @@
 
   <!-- Clean modular scripts (works over both http:// and file://) -->
   <script src="js/levels.js"></script>
+  <script src="js/scores.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/shaders.js"></script>
   <script src="js/renderer.js"></script>
