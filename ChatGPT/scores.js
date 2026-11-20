@@ -34,7 +34,7 @@ function scoreRows(data,device) {
 }
 
 class Scoreboard {
-  constructor(playAgain) {
+  constructor(playAgain,quit) {
     this.dialog=$("score-dialog");
     this.rows=[];this.current=null;this.remote=[];this.rank=null;
     this.requestId=0;this.pending=false;this.failed=false;this.gameOver=false;
@@ -45,6 +45,10 @@ class Scoreboard {
       const replay=this.gameOver;
       this.close();
       if(replay)playAgain();
+    };
+    $("score-quit").onclick=()=>{
+      this.close();
+      quit();
     };
     $("initials").addEventListener("input",()=>this.rename());
     this.dialog.addEventListener("keydown",e=>{
@@ -134,6 +138,7 @@ class Scoreboard {
   }
   render(){
     const local=this.tab==="device",run=this.current,rows=local?this.rows:this.remote;
+    $("score-quit").hidden=!this.gameOver;
     $("score-tabs").hidden=!SHARED;
     document.querySelectorAll("[data-list]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.list===this.tab)));
     $("initials-label").hidden=!(this.gameOver && (run?.listed || run?.submit));

@@ -53,7 +53,7 @@ const game=new Circuit.Game(onEvent);
 function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
 function save(key,value){try{localStorage.setItem(key,value);}catch{}}
 let soundOn=read("gapper.sound","on")==="on";
-const scores=new Scoreboard(act);
+const scores=new Scoreboard(act,quitToStart);
 game.setScheme(read("gapper.controls","third"));
 let typed="",pauseBeforeWord=null;
 let audioCtx,boardCache=null,bursts=[],elapsed=0,prevTime=0,guidePaused=false;
@@ -110,6 +110,13 @@ function act(){
   else if(game.state==="paused"){game.state="playing";sync();}
   else game.start();
   canvas.focus({preventScroll:true});
+}
+function quitToStart(){
+  game.reset();
+  boardCache=null;
+  bursts=[];
+  sync();
+  $("action").focus();
 }
 function showScheme(){
   const first=game.scheme==="first";
