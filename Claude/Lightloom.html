@@ -968,7 +968,7 @@ const AudioFX = (function () {
 
   // The shared list lives on a small web service (see scores-worker/). With no address the game keeps
   // to this device, and the tabs for choosing a list stay hidden.
-  const SHARED = '';
+  const SHARED = 'https://lightloom-scores.iago-swi.workers.dev/';
   let view = SHARED && prefs.get('list') === 'shared' ? 'shared' : 'local';
   const shared = { state: 'idle', top: [], rank: 0, run: null, seq: 0, timer: 0 };   // state: idle, loading, ok or error
   const randomKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');

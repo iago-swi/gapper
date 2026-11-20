@@ -53,6 +53,10 @@ reached and the date. The list is shown when a game ends and opens from the titl
 screen under "High scores". A score that makes the list is saved at once; the initials
 can be typed or changed next to it and are remembered for the next game.
 
+Next to "This device" there is a second tab, "Everyone": the ten best scores of all
+players of the online game and of the single-file edition. Every finished game with a
+score is sent there with your initials, and nothing else about you.
+
 <details>
 <summary>Easter egg (spoiler)</summary>
 
@@ -145,8 +149,9 @@ the field.
 so a shared list needs a service elsewhere. [scores-worker/](scores-worker/) holds
 one: a Cloudflare Worker (about 80 lines) in front of a D1 database with a single
 table. The game contains the matching code: a second tab, "Everyone", next to "This
-device". **The service is not deployed yet, so the game currently ships with the
-shared list switched off** (`SHARED` in `js/game.js` is empty) and the tabs hidden.
+device". The service runs at `https://lightloom-scores.iago-swi.workers.dev/`; that
+address is the constant `SHARED` in `js/game.js`. With an empty address the game keeps to the device, makes no network requests and hides the
+tabs.
 
 | | |
 | --- | --- |
@@ -283,8 +288,9 @@ was taken from such a run. The high-score list was checked the same way (first e
 initials, ties, a full list, a score too low, practice runs, damaged stored data) at
 five window sizes from 320 × 568 to 1440 × 900. The shared list was tested against
 the Worker running on the development machine with a local database, including
-refused scores, renaming, ranking, the rate limit and an unreachable service; it has
-not run on Cloudflare itself. Sound was not checked by ear, and frame rate on slower
+refused scores, renaming, ranking, the rate limit and an unreachable service. The
+deployed service was then checked with the same requests and with one complete game
+sent from the game itself; the test entries were removed afterwards. Sound was not checked by ear, and frame rate on slower
 graphics hardware has not been measured.
 
 [Game history and the other versions](../README.md)
