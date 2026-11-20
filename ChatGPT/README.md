@@ -1,6 +1,6 @@
 # Gapper · Neon Circuit
 
-*Neon Circuit* is a single-player rail chase. Fly the cyan ship over every violet rail while the pink seeker takes the shortest open route to intercept you. Cutting a rail behind you buys 3.6 seconds, but it also closes your own way back.
+*Neon Circuit* is a single-player rail chase. Fly the cyan ship over every violet rail while the pink seeker takes the shortest open route to intercept you. A cut breaks the rail behind you for 3.6 seconds. It can send the seeker on a detour, but it also blocks your own way back. When your last ship is caught, compare your score on the device and shared leaderboards.
 
 The camera stays above the board in both steering schemes. In **Third person**, Left always means the left side of the screen. In **First person**, Left means the ship’s left. When the ship is heading down the screen, that same input sends it toward the right edge.
 
@@ -25,7 +25,9 @@ Choose a steering scheme before starting, while paused, or at game over. Switchi
 
 The runner starts with three lives. The first crossing of a rail earns 10 points. A collision costs one life and preserves all traced rails. Completing the circuit awards another 100 points multiplied by the current level. Three handcrafted layouts cycle as the seeker gets faster.
 
-Open **High scores** beside the best score before launching. **This device** holds your ten best finished runs. **Everyone** shows the ten best Neon Circuit runs across players. A qualifying score is saved at game over. Type up to three initials to sign it, then press Enter once to focus **Play again** and again to launch. Older runs win ties.
+Before launching, open **High scores** beside the best score. **This device** shows the top ten for this browser. **Everyone** shows the shared top ten. At game over, your row lights up if it made the displayed list. If a submitted run finishes below the shared top ten, its rank appears beneath the list. Older runs win ties.
+
+A qualifying run is recorded before you type. Leave the initials blank to appear as a dash, or enter up to three letters or digits. Enter or Escape in the field moves focus to **Play again**. Press Enter there to launch. After you enter initials once, the game remembers them and focuses **Play again** at the next game over.
 
 ## Technical notes
 
@@ -128,15 +130,22 @@ Lives, traced rails and the open gap stay in memory, so reloading starts a fresh
 
 **This device.** Only finished, eligible runs with a positive score can enter the list. A tie follows older entries, and a full list requires a score strictly above tenth place. Each entry contains initials, score, level reached, local calendar date and a random identifier for editing the correct row. Dates display as DD.MM.YYYY. An old personal best migrates with dashes for the unknown initials, level and date. The cabinet’s high-score display always reads the top entry.
 
-**Shared service.** The `neoncircuit-scores` Worker uses its own D1 database of the same name. GET returns the top ten. POST submits the initials, score and ending level along with a random 128-bit run key. Reusing a retained run’s key edits its initials. The response includes overall rank and marks the player’s row. The key stays private. D1 stores the key, initials, score, level and arrival time, from which the Worker derives the UTC date. SQLite insertion order breaks ties. A transaction ranks the submission, keeps the best 200 rows and limits new entries to 30 in a rolling minute across all players. The rate limiter keeps anonymous admission times separately so pruning a row cannot free another slot.
+**Shared service.** The `neoncircuit-scores` Worker uses its own D1 database of the same name. Each finished run gets a random 128-bit key (`k`). Reusing the key of a retained run updates only its initials. D1 stores the key, initials, score, level and arrival time. Public responses omit the key. SQLite insertion order breaks ties. A transaction ranks the submission, keeps the best 200 rows and limits new entries to 30 in a rolling minute across all players. The rate limiter keeps anonymous admission times separately so pruning a row cannot free another slot.
+
+| Request to the Worker’s root path | Successful response |
+| --- | --- |
+| `GET /` | `top` contains up to ten rows. Each has initials (`n`), points (`s`), ending level (`w`) and UTC date (`d`). |
+| `POST /` with `{k, n, s, w}` | `rank` gives the run’s position at submission. Rows in `top` also carry `me`, which is true on the submitting player’s row if it appears there. |
+
+For example, an eleventh-place response contains ten rows and `rank: 11`. The client can show that position without adding an eleventh row or highlighting someone else’s score. Because the device records the player’s local date and the Worker uses UTC, the same run can show different dates around midnight.
 
 **Which scores can reach the service?** Let `w` be the ending level and `j = w − 1` the number already cleared. Each completed cycle of three layouts contributes 231 rails (76 + 78 + 77). The remainder contributes 0, 76 or 154 rails. If `R` is that total, the minimum is `10R + 50j(j + 1)`. The second term sums the 100-point-per-level clear bonuses. The maximum adds `10 × (rails on level w − 1)`, since crossing the final rail clears the level before the ship can be caught there. A submitted score must be a positive integer multiple of 10. For example, level 2 admits 860 through 1,630 in steps of ten. These checks establish plausibility. The browser runs the game and reports its result.
 
-**Network behavior.** The initial POST goes out at game over with remembered initials. Editing a name updates the row immediately and sends the change after 700 ms of inactivity. Requests time out after eight seconds. The device result remains available if the service fails, and failed runs are never queued for later upload. Opening the Everyone board fetches it again. Both editions validate rows and render initials as text.
+**Network behavior.** Eligible scores go to the Worker at game over even when **This device** is selected. Initials edits appear immediately. After 700 ms without another keystroke, the client sends the latest initials with the same run key. It sends edits for one run in order and ignores older replies when a newer request has taken over the display. A request times out after eight seconds. If the submission fails, a qualifying device score stays saved, and the game leaves the failed run off the upload queue. Opening **High scores** with **Everyone** selected fetches fresh rankings. Both editions validate rows and render initials as text.
 
 <details><summary>Easter egg (spoiler)</summary>
 
-Type **PAX** on any screen to toggle practice. An olive branch appears while the seeker can chase you harmlessly. Completing the word restores the pause state from before its P key. Toggling practice off restores collisions. A run that used practice at any point is ineligible for the best score, even if practice was off at game over. Reloading switches practice off.
+Type **PAX** outside the initials field to toggle practice. An olive branch appears while the seeker can chase you harmlessly. Completing the word restores the pause state from before its P key. Toggling practice off restores collisions. Using practice at any point excludes that run from both leaderboards, even if practice was off at game over. Reloading switches practice off.
 
 </details>
 
