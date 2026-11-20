@@ -10,6 +10,12 @@ window.Gapper = window.Gapper || {};
     ArrowRight: 'right', KeyD: 'right'
   };
 
+  const SCHEME_DESC = {
+    third: 'Arrow keys or WASD point where to go in four directions.',
+    first: 'Left/Right or A/D turn relative to travel \u2014 ship moves automatically.'
+  };
+
+  const SWIPE_THRESHOLD_PX = 14; // <= 16 CSS pixels
   const RING_CIRCUMFERENCE = 2 * Math.PI * 16; // r=16 in SVG
 
   function padScore(n) {
@@ -36,7 +42,12 @@ window.Gapper = window.Gapper || {};
     const elGapPips = document.querySelectorAll('#hud-gaps .gap-pip');
     const elLives = document.getElementById('hud-lives');
     const elControlsBar = document.getElementById('controls-bar');
+    const elControlsSteerHint = document.getElementById('controls-steer-hint');
     const elTouchControls = document.getElementById('touch-controls');
+    const elPaxBadge = document.getElementById('pax-badge');
+    const elGoPaxNote = document.getElementById('go-pax-note');
+    const elHowSteerKey = document.getElementById('how-steer-key');
+    const elHowSteerDesc = document.getElementById('how-steer-desc');
 
     const elOverlayTitle = document.getElementById('overlay-title');
     const elOverlayPause = document.getElementById('overlay-pause');
@@ -54,6 +65,7 @@ window.Gapper = window.Gapper || {};
     let lastLivesRendered = -1;
     let lastComboRendered = 1;
     let bannerTimeout = null;
+    let wasPaused = false;
 
     function showStageBanner(level) {
       elBannerEyebrow.textContent = level.code;
@@ -68,6 +80,37 @@ window.Gapper = window.Gapper || {};
       bannerTimeout = setTimeout(() => {
         elStageBanner.classList.add('hidden');
       }, 1900);
+    }
+
+    function syncControlSchemeUI(scheme) {
+      const isFirst = scheme === 'first';
+      document.querySelectorAll('[data-scheme-picker]').forEach((picker) => {
+        picker.querySelectorAll('.scheme-btn').forEach((btn) => {
+          const active = btn.dataset.scheme === scheme;
+          btn.classList.toggle('active', active);
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        const desc = picker.querySelector('[data-scheme-desc]');
+        if (desc) desc.textContent = SCHEME_DESC[scheme] || SCHEME_DESC.third;
+      });
+
+      if (elControlsSteerHint) {
+        elControlsSteerHint.innerHTML = isFirst
+          ? '<kbd>A</kbd>/<kbd>D</kbd> or <kbd>←→</kbd> Turn'
+          : '<kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move';
+      }
+      if (elHowSteerKey && elHowSteerDesc) {
+        if (isFirst) {
+          elHowSteerKey.textContent = 'A/D / LEFT-RIGHT';
+          elHowSteerDesc.textContent = 'Turn left or right relative to your travel';
+        } else {
+          elHowSteerKey.textContent = 'WASD / ARROWS';
+          elHowSteerDesc.textContent = 'Trace luminous conduits along the grid';
+        }
+      }
+      if (elTouchControls) {
+        elTouchControls.classList.toggle('first-person', isFirst);
+      }
     }
 
     function updateHud(data) {
@@ -133,6 +176,9 @@ window.Gapper = window.Gapper || {};
     }
 
     function onStateChange(newState, payload) {
+      const resumedFromPause = wasPaused && newState === 'playing';
+      wasPaused = (newState === 'paused');
+
       hideAllOverlays();
       if (newState === 'attract') {
         elHud.classList.add('hidden');
@@ -144,7 +190,7 @@ window.Gapper = window.Gapper || {};
         elHud.classList.remove('hidden');
         elControlsBar.classList.remove('hidden');
         if (isTouchDevice) elTouchControls.classList.remove('hidden');
-        if (payload && payload.code && !elStageBanner.dataset.shownFor) {
+        if (!resumedFromPause && payload && payload.code) {
           showStageBanner(payload);
         }
       } else if (newState === 'paused') {
@@ -162,19 +208,25 @@ window.Gapper = window.Gapper || {};
         document.getElementById('go-stage').textContent = String(payload.stageNum).padStart(2, '0');
         document.getElementById('go-cells').textContent = String(payload.cellsSealed);
         document.getElementById('go-new-best').classList.toggle('hidden', !payload.isNewBest);
+        if (elGoPaxNote) {
+          elGoPaxNote.classList.toggle('hidden', !payload.paxUsed);
+        }
         elOverlayGameOver.classList.remove('hidden');
       }
     }
 
-    const game = new G.GameEngine(sound, sceneRenderer, updateHud, (state, payload) => {
-      if (state === 'playing' && payload && payload.code) {
-        // Show stage banner only on fresh stage load (not pause resume)
-        if (elOverlayPause.classList.contains('hidden')) {
-          showStageBanner(payload);
-        }
-      }
-      onStateChange(state, payload);
+    const game = new G.GameEngine(sound, sceneRenderer, updateHud, onStateChange);
+    G._instance = game;
+
+    // Initialize Control Scheme pickers (Title + Pause)
+    document.querySelectorAll('.scheme-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.init();
+        const scheme = game.setControlScheme(btn.dataset.scheme);
+        syncControlSchemeUI(scheme);
+      });
     });
+    syncControlSchemeUI(game.controlScheme);
 
     // Build Sector Picker buttons on Title Screen
     G.LEVELS.forEach((lvl, idx) => {
@@ -212,19 +264,48 @@ window.Gapper = window.Gapper || {};
     }
     btnSound.addEventListener('click', handleMuteToggle);
 
-    // Keyboard input
+    // Hidden practice mode sequence buffer (last 3 typed characters, case-insensitive)
+    let paxBuffer = '';
+    let paxModeBeforeP = null;
+
+    // Keyboard input (handled immediately on keydown; auto-repeat ignored)
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
         e.preventDefault();
       }
+      if (e.repeat) return;
+
       sound.init();
+
+      const typedKey = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+
+      // Track last 3 typed characters on any screen for PAX toggle
+      if (typedKey.length === 1) {
+        if (typedKey === 'p') {
+          paxModeBeforeP = game.mode;
+        }
+        paxBuffer = (paxBuffer + typedKey).slice(-3);
+        if (paxBuffer === 'pax') {
+          paxBuffer = '';
+          const active = game.togglePax();
+          if (elPaxBadge) elPaxBadge.classList.toggle('hidden', !active);
+          // Undo any pause/resume toggled by the leading 'P'
+          if (paxModeBeforeP === 'playing' && game.mode === 'paused') {
+            game.setPaused(false);
+          } else if (paxModeBeforeP === 'paused' && game.mode === 'playing') {
+            game.setPaused(true);
+          }
+          paxModeBeforeP = null;
+          return;
+        }
+      }
 
       if (e.code === 'KeyM') {
         handleMuteToggle();
         return;
       }
 
-      if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (e.code === 'Escape' || typedKey === 'p' || e.code === 'KeyP') {
         if (game.mode === 'playing' || game.mode === 'paused') {
           game.togglePause();
         }
@@ -258,7 +339,7 @@ window.Gapper = window.Gapper || {};
           return;
         }
         if (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyE') {
-          if (!e.repeat) game.triggerGap();
+          game.triggerGap();
         }
       }
     }, { passive: false });
@@ -272,7 +353,7 @@ window.Gapper = window.Gapper || {};
       game.clearInputs();
     });
 
-    // Touch D-Pad + Gap button
+    // Touch D-Pad + Gap button (act on touch-down, not release)
     document.querySelectorAll('.dpad-btn').forEach((btn) => {
       const dir = btn.dataset.dir;
       btn.addEventListener('pointerdown', (e) => {
@@ -291,6 +372,46 @@ window.Gapper = window.Gapper || {};
       game.triggerGap();
     });
 
+    // Playfield touch controls:
+    // - Third person: swipe registers after <= 16 CSS pixels (14 px)
+    // - First person: tap left/right half of screen on touch-down
+    let activeTouch = null;
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || game.mode !== 'playing') return;
+      e.preventDefault();
+      sound.init();
+      if (game.controlScheme === 'first') {
+        const side = e.clientX < window.innerWidth * 0.5 ? 'left' : 'right';
+        game.setDirectionDown(side);
+        activeTouch = null;
+      } else {
+        activeTouch = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!activeTouch || e.pointerId !== activeTouch.id || game.mode !== 'playing') return;
+      if (game.controlScheme !== 'third') return;
+      const dx = e.clientX - activeTouch.x;
+      const dy = e.clientY - activeTouch.y;
+      if (Math.hypot(dx, dy) >= SWIPE_THRESHOLD_PX) {
+        const dir = Math.abs(dx) >= Math.abs(dy)
+          ? (dx > 0 ? 'right' : 'left')
+          : (dy > 0 ? 'down' : 'up');
+        game.setDirectionDown(dir);
+        activeTouch.x = e.clientX;
+        activeTouch.y = e.clientY;
+      }
+    }, { passive: true });
+
+    const endTouch = (e) => {
+      if (activeTouch && e.pointerId === activeTouch.id) {
+        activeTouch = null;
+      }
+    };
+    canvas.addEventListener('pointerup', endTouch);
+    canvas.addEventListener('pointercancel', endTouch);
+
     // Responsive DPR Resize
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     function handleResize() {
@@ -302,22 +423,29 @@ window.Gapper = window.Gapper || {};
 
     // Main Render Loop
     let lastTs = performance.now();
+    let lastGamepadDir = null;
     function frame(ts) {
       const dt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
       lastTs = ts;
 
-      // Optional Gamepad polling
+      // Optional Gamepad polling (edge-triggered so it never repeats)
       if (game.mode === 'playing' && navigator.getGamepads) {
         const gp = navigator.getGamepads()[0];
         if (gp) {
           const ax = gp.axes[0] || 0;
           const ay = gp.axes[1] || 0;
+          let gpDir = null;
           if (Math.abs(ax) > 0.45 || Math.abs(ay) > 0.45) {
             if (Math.abs(ax) > Math.abs(ay)) {
-              game.setDirectionDown(ax > 0 ? 'right' : 'left');
+              gpDir = ax > 0 ? 'right' : 'left';
             } else {
-              game.setDirectionDown(ay > 0 ? 'down' : 'up');
+              gpDir = ay > 0 ? 'down' : 'up';
             }
+          }
+          if (gpDir !== lastGamepadDir) {
+            if (lastGamepadDir) game.setDirectionUp(lastGamepadDir);
+            if (gpDir) game.setDirectionDown(gpDir);
+            lastGamepadDir = gpDir;
           }
           if (gp.buttons[0] && gp.buttons[0].pressed && !gp._gapWasDown) {
             game.triggerGap();

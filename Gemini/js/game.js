@@ -4,7 +4,29 @@ window.Gapper = window.Gapper || {};
   'use strict';
 
   const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  const TURN_LEFT = { up: 'left', left: 'down', down: 'right', right: 'up' };
+  const TURN_RIGHT = { up: 'right', right: 'down', down: 'left', left: 'up' };
   const DIRS = ['up', 'down', 'left', 'right'];
+
+  const LATE_TURN_WINDOW = 0.3;
+  const FIRST_PERSON_QUEUE_TTL = 1.0;
+  const VISUAL_OFFSET_DECAY_RATE = 30;
+  const BEST_STORAGE_KEY = 'gapper_prism_best';
+  const CONTROL_STORAGE_KEY = 'gapper_prism_controls';
+
+  function safeStorageGet(key) {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function safeStorageSet(key, val) {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key, val);
+    } catch (_) {}
+  }
 
   function clamp(v, lo, hi) {
     return v < lo ? lo : v > hi ? hi : v;
@@ -26,7 +48,10 @@ window.Gapper = window.Gapper || {};
       this.selectedStartStage = 0;
 
       this.score = 0;
-      this.bestScore = Number(localStorage.getItem('gapper_prism_best') || 0);
+      this.bestScore = Number(safeStorageGet(BEST_STORAGE_KEY) || 0);
+      this.controlScheme = safeStorageGet(CONTROL_STORAGE_KEY) === 'first' ? 'first' : 'third';
+      this.paxEnabled = false;
+      this.paxUsedThisGame = false;
       this.lives = 3;
       this.combo = 1;
       this.comboTimer = 0;
@@ -56,7 +81,8 @@ window.Gapper = window.Gapper || {};
       // Input state
       this.heldDirs = [];
       this.queuedDir = null;
-      this.queuedDirTimer = 0;
+      this.queuedRelTurn = null;
+      this.queuedRelTimer = 0;
 
       this.progress = 0;
       this.cornerCount = 0;
@@ -75,10 +101,48 @@ window.Gapper = window.Gapper || {};
       this.score = 0;
       this.lives = 3;
       this.totalCellsSealed = 0;
+      this.paxUsedThisGame = this.paxEnabled;
       this.mode = 'playing';
       this._loadStage(this.stageIndex, false);
       this.onStateChange('playing', this.graph.level);
       this._emitHud();
+    }
+
+    setControlScheme(scheme) {
+      const next = scheme === 'first' ? 'first' : 'third';
+      this.controlScheme = next;
+      safeStorageSet(CONTROL_STORAGE_KEY, next);
+      this.clearInputs();
+      if (this.mode === 'playing' && next === 'first' && this.player && this.player.deadTimer <= 0) {
+        if (this.player.mode === 'node' && !this.player.dir) {
+          this._startAutoMoveFirstPerson();
+        }
+      }
+      return this.controlScheme;
+    }
+
+    togglePax() {
+      this.paxEnabled = !this.paxEnabled;
+      if (this.paxEnabled && (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'stageClear')) {
+        this.paxUsedThisGame = true;
+      }
+      return this.paxEnabled;
+    }
+
+    setPaused(shouldPause) {
+      if (shouldPause && this.mode === 'playing') {
+        this.mode = 'paused';
+        this.sound.setAmbientIntensity(false, 0, false);
+        this.onStateChange('paused', this.graph.level);
+      } else if (!shouldPause && this.mode === 'paused') {
+        this.mode = 'playing';
+        if (this.controlScheme === 'first' && this.player && this.player.deadTimer <= 0) {
+          if (this.player.mode === 'node' && !this.player.dir && this.player.lastEdgeId === -1) {
+            this._startAutoMoveFirstPerson();
+          }
+        }
+        this.onStateChange('playing', this.graph.level);
+      }
     }
 
     restartStage() {
@@ -108,12 +172,9 @@ window.Gapper = window.Gapper || {};
 
     togglePause() {
       if (this.mode === 'playing') {
-        this.mode = 'paused';
-        this.sound.setAmbientIntensity(false, 0, false);
-        this.onStateChange('paused', this.graph.level);
+        this.setPaused(true);
       } else if (this.mode === 'paused') {
-        this.mode = 'playing';
-        this.onStateChange('playing', this.graph.level);
+        this.setPaused(false);
       }
     }
 
@@ -144,7 +205,8 @@ window.Gapper = window.Gapper || {};
       this.shockwaves = [];
       this.heldDirs = [];
       this.queuedDir = null;
-      this.queuedDirTimer = 0;
+      this.queuedRelTurn = null;
+      this.queuedRelTimer = 0;
 
       const startNode = this.graph.nodes[this.graph.spawns.player];
       this.player = {
@@ -155,6 +217,12 @@ window.Gapper = window.Gapper || {};
         dir: null,
         facing: 'up',
         lastEdgeId: -1,
+        entryNodeId: -1,
+        entryEdgeWasPainted: false,
+        entryEdgePrevIntervals: [],
+        reversing: false,
+        visOffX: 0,
+        visOffY: 0,
         x: startNode.x,
         y: startNode.y,
         trail: [],
@@ -163,6 +231,10 @@ window.Gapper = window.Gapper || {};
         invulnTimer: isAttract ? 999 : 2.2,
         deadTimer: 0
       };
+
+      if (!isAttract && this.controlScheme === 'first') {
+        this._startAutoMoveFirstPerson();
+      }
 
       this.seekers = def.seekers.map((cfg, sIdx) => {
         const spawnId = this.graph.spawns[cfg.spawn] ?? this.graph.spawns.topRight;
@@ -193,13 +265,177 @@ window.Gapper = window.Gapper || {};
       this.aiGapCooldown = 2.5;
     }
 
-    // ==================== INPUT ====================
+    // ==================== INPUT & IMMEDIATE STEERING ====================
+    _canEnterFromNode(node, dir) {
+      if (!node || !dir) return false;
+      const link = node.adj[dir];
+      if (!link) return false;
+      const edge = this.graph.edges[link.edgeId];
+      const enterT = link.toEnd === 1 ? 0 : 1;
+      if (edge.gap) {
+        const g0 = edge.gap.t - edge.gap.halfT;
+        const g1 = edge.gap.t + edge.gap.halfT;
+        if ((enterT === 0 && g0 < 0.04) || (enterT === 1 && g1 > 0.96)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    _enterEdgeFromNode(node, dir, initialDistPx = 0) {
+      if (!this._canEnterFromNode(node, dir)) return false;
+      const p = this.player;
+      const link = node.adj[dir];
+      const edge = this.graph.edges[link.edgeId];
+      const enterT = link.toEnd === 1 ? 0 : 1;
+
+      p.entryNodeId = node.id;
+      p.entryEdgeWasPainted = edge.painted;
+      p.entryEdgePrevIntervals = edge.intervals.map((iv) => [iv[0], iv[1]]);
+      p.reversing = false;
+
+      p.mode = 'edge';
+      p.edgeId = edge.id;
+      p.dir = dir;
+      p.facing = dir;
+      p.t = enterT;
+
+      if (initialDistPx > 0) {
+        const lenPx = Math.max(1, edge.lengthPx);
+        let frac = clamp(initialDistPx / lenPx, 0, 0.96);
+        if (edge.gap) {
+          const g0 = edge.gap.t - edge.gap.halfT - 0.025;
+          const g1 = edge.gap.t + edge.gap.halfT + 0.025;
+          if (enterT === 0) frac = Math.min(frac, Math.max(0, g0));
+          else frac = Math.min(frac, Math.max(0, 1 - g1));
+        }
+        if (enterT === 0) {
+          p.t = frac;
+          this._paintEdgeInterval(edge, 0, p.t);
+        } else {
+          p.t = 1 - frac;
+          this._paintEdgeInterval(edge, p.t, 1);
+        }
+      }
+
+      this._syncEntityPositions();
+      return true;
+    }
+
+    _startAutoMoveFirstPerson() {
+      const p = this.player;
+      if (!p || p.mode !== 'node') return false;
+      const node = this.graph.nodes[p.nodeId];
+      const pref = [p.facing || 'up', 'up', 'right', 'left', 'down'];
+      for (const d of pref) {
+        if (this._enterEdgeFromNode(node, d)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    _tryLateTurn(turnDir) {
+      const p = this.player;
+      if (!p || p.mode !== 'edge' || p.reversing || p.entryNodeId < 0) return false;
+      if (turnDir === p.dir || turnDir === OPPOSITE[p.dir]) return false;
+
+      const oldEdge = this.graph.edges[p.edgeId];
+      if (!oldEdge) return false;
+
+      const distFrac = (p.entryNodeId === oldEdge.a) ? p.t : (1 - p.t);
+      if (distFrac > LATE_TURN_WINDOW + 1e-9) return false;
+
+      const entryNode = this.graph.nodes[p.entryNodeId];
+      if (!this._canEnterFromNode(entryNode, turnDir)) return false;
+
+      // Preserve current drawn position so we can smoothly blend without jumping
+      this._syncEntityPositions();
+      const oldVisX = p.x + p.visOffX;
+      const oldVisY = p.y + p.visOffY;
+
+      // Abandoned old segment does not count as traced
+      if (!p.entryEdgeWasPainted) {
+        oldEdge.intervals = p.entryEdgePrevIntervals.map((iv) => [iv[0], iv[1]]);
+        oldEdge.painted = false;
+        oldEdge.paintFlash = 0;
+      }
+
+      const travelledPx = distFrac * Math.max(1, oldEdge.lengthPx);
+      this._enterEdgeFromNode(entryNode, turnDir, travelledPx);
+
+      // Visual offset = old drawn position minus new logical position
+      p.visOffX = oldVisX - p.x;
+      p.visOffY = oldVisY - p.y;
+      return true;
+    }
+
     setDirectionDown(dir) {
       if (!DIRS.includes(dir)) return;
+      if (this.mode !== 'playing' || !this.player || this.player.deadTimer > 0) return;
+
+      const p = this.player;
+
+      if (this.controlScheme === 'first') {
+        // First person: only LEFT and RIGHT are used; UP and DOWN do nothing
+        if (dir !== 'left' && dir !== 'right') return;
+        const travel = p.dir || p.facing || 'up';
+        const turnDir = dir === 'left' ? TURN_LEFT[travel] : TURN_RIGHT[travel];
+
+        if (p.mode === 'node') {
+          const node = this.graph.nodes[p.nodeId];
+          if (this._enterEdgeFromNode(node, turnDir)) {
+            this.queuedRelTurn = null;
+            this.queuedRelTimer = 0;
+            return;
+          }
+          this.queuedRelTurn = dir;
+          this.queuedRelTimer = FIRST_PERSON_QUEUE_TTL;
+          return;
+        }
+
+        if (p.mode === 'edge') {
+          if (this._tryLateTurn(turnDir)) {
+            this.queuedRelTurn = null;
+            this.queuedRelTimer = 0;
+            return;
+          }
+          this.queuedRelTurn = dir;
+          this.queuedRelTimer = FIRST_PERSON_QUEUE_TTL;
+        }
+        return;
+      }
+
+      // Third person: 4-way steering handled immediately inside keydown/touch
       this.heldDirs = this.heldDirs.filter((d) => d !== dir);
       this.heldDirs.push(dir);
       this.queuedDir = dir;
-      this.queuedDirTimer = 0.24;
+
+      if (p.mode === 'node') {
+        const node = this.graph.nodes[p.nodeId];
+        if (this._enterEdgeFromNode(node, dir)) {
+          this.queuedDir = null;
+        }
+        return;
+      }
+
+      if (p.mode === 'edge') {
+        // Immediate mid-segment reversal
+        if (dir === OPPOSITE[p.dir]) {
+          p.dir = dir;
+          p.facing = dir;
+          p.reversing = true;
+          this.queuedDir = null;
+          return;
+        }
+        // Late-turn window (<= 0.3 of segment past entry junction)
+        if (dir !== p.dir) {
+          if (this._tryLateTurn(dir)) {
+            this.queuedDir = null;
+            return;
+          }
+        }
+      }
     }
 
     setDirectionUp(dir) {
@@ -209,15 +445,14 @@ window.Gapper = window.Gapper || {};
     clearInputs() {
       this.heldDirs = [];
       this.queuedDir = null;
-      this.queuedDirTimer = 0;
+      this.queuedRelTurn = null;
+      this.queuedRelTimer = 0;
     }
 
-    _getDesiredDir() {
+    _getDesiredDirThirdPerson() {
+      if (this.queuedDir) return this.queuedDir;
       if (this.heldDirs.length > 0) {
         return this.heldDirs[this.heldDirs.length - 1];
-      }
-      if (this.queuedDirTimer > 0 && this.queuedDir) {
-        return this.queuedDir;
       }
       return null;
     }
@@ -365,7 +600,13 @@ window.Gapper = window.Gapper || {};
       }
 
       // Timers
-      if (this.queuedDirTimer > 0) this.queuedDirTimer -= dt;
+      if (this.queuedRelTimer > 0) {
+        this.queuedRelTimer -= dt;
+        if (this.queuedRelTimer <= 0) {
+          this.queuedRelTimer = 0;
+          this.queuedRelTurn = null;
+        }
+      }
       if (this.comboTimer > 0) {
         this.comboTimer -= dt;
         if (this.comboTimer <= 0) {
@@ -471,10 +712,19 @@ window.Gapper = window.Gapper || {};
         p.gapCharges = Math.min(p.maxGapCharges, p.gapCharges + dt / 4.2);
       }
 
+      // Smoothly decay visual offset from late turns (~0.1s)
+      if (p.visOffX !== 0 || p.visOffY !== 0) {
+        const decay = Math.exp(-VISUAL_OFFSET_DECAY_RATE * dt);
+        p.visOffX *= decay;
+        p.visOffY *= decay;
+        if (Math.abs(p.visOffX) < 0.05) p.visOffX = 0;
+        if (Math.abs(p.visOffY) < 0.05) p.visOffY = 0;
+      }
+
       const speedScale = (this.renderer.layout.cellPx / 72);
       const speedPx = this.graph.level.playerSpeed * speedScale * (this.overdriveTimer > 0 ? 1.18 : 1.0);
       let remainingDist = speedPx * dt;
-      const desired = this._getDesiredDir();
+      const useFirstPerson = (this.mode === 'playing' && this.controlScheme === 'first');
 
       // Safety loop (max 3 transitions in 1 frame)
       for (let step = 0; step < 3 && remainingDist > 0.01; step++) {
@@ -482,73 +732,70 @@ window.Gapper = window.Gapper || {};
           const node = this.graph.nodes[p.nodeId];
           let chosen = null;
 
-          if (desired && node.adj[desired]) {
-            chosen = desired;
-          } else if (p.dir && node.adj[p.dir]) {
-            chosen = p.dir;
-          }
+          if (useFirstPerson) {
+            if (!p.dir) {
+              // Waiting at a junction for LEFT or RIGHT (measured from arrival facing)
+              break;
+            }
+            const travel = p.dir;
+            const leftDir = TURN_LEFT[travel];
+            const rightDir = TURN_RIGHT[travel];
 
-          if (!chosen) {
-            p.dir = null;
-            break;
-          }
+            // 1. Queued relative turn if open
+            if (this.queuedRelTurn && this.queuedRelTimer > 0) {
+              const qDir = this.queuedRelTurn === 'left' ? leftDir : rightDir;
+              if (this._canEnterFromNode(node, qDir)) {
+                chosen = qDir;
+                this.queuedRelTurn = null;
+                this.queuedRelTimer = 0;
+              }
+            }
 
-          const link = node.adj[chosen];
-          const edge = this.graph.edges[link.edgeId];
-          // Check if blocked immediately by a gap right at entry
-          const enterT = link.toEnd === 1 ? 0 : 1;
-          if (edge.gap) {
-            const g0 = edge.gap.t - edge.gap.halfT;
-            const g1 = edge.gap.t + edge.gap.halfT;
-            if ((enterT === 0 && g0 < 0.04) || (enterT === 1 && g1 > 0.96)) {
+            // 2. Otherwise straight on if open
+            if (!chosen && this._canEnterFromNode(node, travel)) {
+              chosen = travel;
+            }
+
+            // 3. Otherwise if exactly one of left/right is open, take it unprompted
+            if (!chosen) {
+              const leftOpen = this._canEnterFromNode(node, leftDir);
+              const rightOpen = this._canEnterFromNode(node, rightDir);
+              if (leftOpen && !rightOpen) {
+                chosen = leftDir;
+              } else if (rightOpen && !leftOpen) {
+                chosen = rightDir;
+              } else {
+                // Both open (or dead end): stop and wait, keeping arrival facing
+                p.dir = null;
+                p.facing = travel;
+                break;
+              }
+            }
+          } else {
+            const desired = this._getDesiredDirThirdPerson();
+            if (desired && this._canEnterFromNode(node, desired)) {
+              chosen = desired;
+            } else if (p.dir && this._canEnterFromNode(node, p.dir)) {
+              chosen = p.dir;
+            }
+            if (!chosen) {
               p.dir = null;
               break;
             }
           }
 
-          p.mode = 'edge';
-          p.edgeId = edge.id;
-          p.t = enterT;
-          p.dir = chosen;
-          p.facing = chosen;
-          if (desired === chosen) this.queuedDir = null;
+          if (!this._enterEdgeFromNode(node, chosen)) {
+            p.dir = null;
+            break;
+          }
+          if (!useFirstPerson && chosen === this.queuedDir) {
+            this.queuedDir = null;
+          }
         }
 
         if (p.mode === 'edge') {
           const edge = this.graph.edges[p.edgeId];
           const movingToB = (p.dir === 'right' || p.dir === 'down');
-
-          // Instant reversal on edge
-          if (desired && desired === OPPOSITE[p.dir]) {
-            p.dir = desired;
-            p.facing = desired;
-            this.queuedDir = null;
-            continue;
-          }
-
-          // Pro arcade corner-snap forgiveness near endpoints!
-          if (desired && desired !== p.dir && desired !== OPPOSITE[p.dir]) {
-            const nodeA = this.graph.nodes[edge.a];
-            const nodeB = this.graph.nodes[edge.b];
-            if (p.t < 0.22 && nodeA.adj[desired]) {
-              this._paintEdgeInterval(edge, 0, p.t);
-              p.mode = 'node';
-              p.nodeId = edge.a;
-              p.lastEdgeId = edge.id;
-              p.edgeId = -1;
-              p.t = 0;
-              continue;
-            }
-            if (p.t > 0.78 && nodeB.adj[desired]) {
-              this._paintEdgeInterval(edge, p.t, 1);
-              p.mode = 'node';
-              p.nodeId = edge.b;
-              p.lastEdgeId = edge.id;
-              p.edgeId = -1;
-              p.t = 1;
-              continue;
-            }
-          }
 
           const dT = remainingDist / edge.lengthPx;
           const prevT = p.t;
@@ -582,6 +829,7 @@ window.Gapper = window.Gapper || {};
             p.lastEdgeId = edge.id;
             p.edgeId = -1;
             p.t = 1;
+            p.reversing = false;
           } else if (nextT <= 0) {
             this._paintEdgeInterval(edge, 0, prevT);
             remainingDist -= prevT * edge.lengthPx;
@@ -590,6 +838,7 @@ window.Gapper = window.Gapper || {};
             p.lastEdgeId = edge.id;
             p.edgeId = -1;
             p.t = 0;
+            p.reversing = false;
           } else {
             this._paintEdgeInterval(edge, Math.min(prevT, nextT), Math.max(prevT, nextT));
             p.t = nextT;
@@ -600,10 +849,12 @@ window.Gapper = window.Gapper || {};
 
       this._syncEntityPositions();
 
-      // Update glowing ribbon trail
+      // Update glowing ribbon trail (tracks drawn visual position seamlessly)
+      const visX = p.x + p.visOffX;
+      const visY = p.y + p.visOffY;
       const lastPt = p.trail[p.trail.length - 1];
-      if (!lastPt || Math.hypot(p.x - lastPt.x, p.y - lastPt.y) > 2.5 * this.dpr) {
-        p.trail.push({ x: p.x, y: p.y });
+      if (!lastPt || Math.hypot(visX - lastPt.x, visY - lastPt.y) > 2.5 * this.dpr) {
+        p.trail.push({ x: visX, y: visY });
         if (p.trail.length > 18) p.trail.shift();
       }
     }
@@ -1046,7 +1297,7 @@ window.Gapper = window.Gapper || {};
           if (this.overdriveTimer > 0) {
             this.overdriveKills++;
             this._shatterSeeker(s, `SHATTER +${400 * this.overdriveKills}`, 400 * this.overdriveKills);
-          } else if (p.invulnTimer <= 0 && this.mode === 'playing') {
+          } else if (!this.paxEnabled && p.invulnTimer <= 0 && this.mode === 'playing') {
             this._onPlayerHit();
             break;
           }
@@ -1106,12 +1357,24 @@ window.Gapper = window.Gapper || {};
       p.edgeId = -1;
       p.t = 0;
       p.dir = null;
+      p.facing = 'up';
       p.lastEdgeId = -1;
+      p.entryNodeId = -1;
+      p.entryEdgeWasPainted = false;
+      p.entryEdgePrevIntervals = [];
+      p.reversing = false;
+      p.visOffX = 0;
+      p.visOffY = 0;
       p.x = startNode.x;
       p.y = startNode.y;
       p.trail = [];
       p.invulnTimer = 2.6;
       p.gapCharges = Math.max(p.gapCharges, 2);
+      this.clearInputs();
+
+      if (this.controlScheme === 'first') {
+        this._startAutoMoveFirstPerson();
+      }
 
       // Gently reset Seekers that are camping right on top of the spawn
       for (const s of this.seekers) {
@@ -1197,7 +1460,6 @@ window.Gapper = window.Gapper || {};
 
       if (bestDir) {
         this.queuedDir = bestDir;
-        this.queuedDirTimer = 0.4;
       }
     }
 
@@ -1225,9 +1487,9 @@ window.Gapper = window.Gapper || {};
 
     _addScore(pts) {
       this.score += Math.round(pts);
-      if (this.score > this.bestScore) {
+      if (!this.paxUsedThisGame && this.score > this.bestScore) {
         this.bestScore = this.score;
-        localStorage.setItem('gapper_prism_best', String(this.bestScore));
+        safeStorageSet(BEST_STORAGE_KEY, String(this.bestScore));
       }
     }
 
@@ -1251,7 +1513,8 @@ window.Gapper = window.Gapper || {};
       this.onStateChange('gameOver', {
         score: this.score,
         bestScore: this.bestScore,
-        isNewBest: this.score > 0 && this.score >= this.bestScore,
+        isNewBest: !this.paxUsedThisGame && this.score > 0 && this.score >= this.bestScore,
+        paxUsed: this.paxUsedThisGame,
         stageNum: this.stageIndex + 1,
         cellsSealed: this.totalCellsSealed
       });

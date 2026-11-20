@@ -16,16 +16,18 @@ Download or clone this repository and open `Gemini/index.html` directly in Chrom
 
 Navigate along the conduits of an irregular architectural grid. Every segment you traverse ignites from cool optical sapphire into molten plasma; enclosing all perimeter segments of a chamber seals it in crystalline light, chaining combos and recharging your Gap arcs. Seal every chamber to illuminate the sector and advance.
 
-| Key | Action |
-| --- | --- |
-| Arrow keys or `WASD` | Move along conduits (with corner-assist & input buffering) |
-| `Space`, `Shift`, or `E` | Sever the rail behind you to drop a crackling **Plasma Gap** |
-| `Enter` | Launch Sector / Next Sector / Play Again |
-| `P` or `Esc` | Pause / Resume |
-| `R` | Restart current sector |
-| `M` | Toggle procedural Web Audio synthesizer |
+Two steering schemes are selectable on both the title screen and the pause menu (**Third person** by default, or **First person**), and changes apply immediately.
 
-Touchscreen devices automatically display an on-screen directional pad and **GAP** trigger, and standard HTML5 Gamepad controllers are also supported.
+| Action | Third person (Keyboard) | First person (Keyboard) | Touch |
+| --- | --- | --- | --- |
+| Steer / Turn | Arrow keys or `WASD` (4 directions; opposite reverses mid-segment) | `Left`/`Right` arrows or `A`/`D` (relative left/right; `Up`/`Down`/`W`/`S` ignored) | Third person: 4-way pad (touch-down) or swipe (`14 px`, `<= 16 CSS px`). First person: Left/Right pad buttons or tap left/right half of the screen (touch-down). |
+| Plasma Gap | `Space`, `Shift`, or `E` | `Space`, `Shift`, or `E` | **GAP** button (touch-down) |
+| Start / Continue | `Enter` | `Enter` | Tap on-screen button |
+| Pause / Resume | `P` or `Esc` | `P` or `Esc` | HUD Pause button |
+| Restart sector | `R` | `R` | Pause menu |
+| Toggle audio | `M` | `M` | HUD Audio button |
+
+In **First person**, the ship begins moving automatically at the start of a sector and after losing a life. At each junction it takes a queued turn if open, otherwise continues straight if open, otherwise rounds a single open corner unprompted, or waits when both left and right are open (measuring left/right from its arrival direction). Standard HTML5 Gamepad controllers are also supported.
 
 | Mechanic / Entity | Behaviour |
 | --- | --- |
@@ -45,7 +47,7 @@ Touchscreen devices automatically display an on-screen directional pad and **GAP
 | Language | Plain JavaScript (ES2020) organized into 6 clean modules under `window.Gapper`. |
 | Rendering | Hybrid high-DPI Canvas 2D architectural vector scene piped into a 4-pass **WebGL 2 (GLSL ES 3.00)** post-processing & procedural nebula pipeline, with automatic Canvas 2D fallback. |
 | Audio | Real-time procedural **Web Audio API** synthesizer with master dynamics compressor, filtered ambient drone, pentatonic rail plucks, harmonic seal chords, and noise-shaped plasma SFX. |
-| Storage | Single `localStorage` key, `gapper_prism_best`, persisting the high score. |
+| Storage | Two `localStorage` keys: `gapper_prism_best` (high score) and `gapper_prism_controls` (`"third"` or `"first"` steering scheme). |
 
 ```text
 Gemini/
@@ -71,11 +73,12 @@ Rather than hard-coding uniform grids or manual edge tables, each sector is defi
 3. **O(1) chamber binding:** Each edge stores the 1 or 2 `cells` it borders, and each cell stores its complete set of perimeter `edges`.
 4. **Architectural void detection:** Scans the bounding grid for uncovered sub-rectangles and merges maximal uncovered regions into `voidRects` (used in Sectors 03 and 05 to punch transparent abyss windows directly through the obsidian glass monolith).
 
-### Continuous edge painting & corner-assist movement (`js/game.js`)
+### Continuous edge painting, steering & late-turn window (`js/game.js`)
 
 - Entities transition cleanly between explicit `'node'` and `'edge'` states, with speed scaled proportionally to `cellPx` and edge length so visual velocity stays uniform across varying segment sizes and viewport resolutions.
 - **Continuous interval merging:** Instead of snapping edges binary on arrival, traversing along an edge continuously appends `[prevT, nextT]` intervals and merges overlapping spans (`ε = 0.025`). Reversing mid-segment preserves partial progress; meeting the painted tip from the opposite direction fuses the interval and completes the rail once coverage spans `[0.035, 0.965]`.
-- **Arcade corner forgiveness:** Input holds and a `240 ms` turn buffer snap cleanly around perpendicular corners within `22%` of an endpoint, while opposite-direction inputs reverse instantaneously anywhere along a rail.
+- **Immediate `keydown` steering & input buffering:** Steering keys (ignoring auto-repeat) and touch-down inputs are processed synchronously inside the event handler rather than waiting for the next animation frame. In third person, the opposite direction reverses immediately mid-segment and any perpendicular direction stays buffered until taken at the next junction where it is open. In first person, queued relative left/right turns fire at the first junction where that turn is open and lapse after `1.0 s`. Touch swipes in third person trigger after `14 CSS px` (`<= 16 CSS px`).
+- **Late-turn window (`0.3` segment):** In both control schemes, pressing a sideways turn while no more than `0.3` of a segment past the entry junction (and not reversing) immediately takes that turn at that junction—placing the ship on the new segment at the exact distance already travelled, reverting any partial trace on the abandoned segment, and storing a visual offset (`oldPos - newPos`) that decays smoothly via `exp(-30 * dt)` (~`0.1 s`) so the rendered sprite never jumps while collisions use the new logical position at once.
 - **Live attract-mode AI:** On the title screen, a lightweight autonomous Gapper navigates toward unpainted rails while evading Seekers and deploying Plasma Gaps behind the glassmorphic menu.
 
 ### Multi-pass WebGL 2 optical pipeline (`js/shaders.js` + `js/renderer.js`)
@@ -114,5 +117,11 @@ Each animation frame renders in two cooperating layers:
 All audio is generated live via the Web Audio API through a master `DynamicsCompressorNode`:
 - Dual-oscillator (`sawtooth` + `triangle`) ambient drone routed through a resonant low-pass filter whose cutoff (`210 Hz` → `550 Hz`, or `760 Hz` in Overdrive) and gain open smoothly with sector completion.
 - Pentatonic crystalline plucks when completing rails, polyphonic major-9th arpeggiated chords that ascend in pitch with combo chains, filtered white-noise plasma crackles on Gap creation/blocks, and sweeping fanfares for Overdrive and Sector Clear.
+
+<details><summary>Easter egg (spoiler)</summary>
+
+Typing `P`, `A`, `X` in sequence (case-insensitive, auto-repeat ignored) on any screen toggles a hidden **PAX** practice mode on or off. While active, a muted olive-green olive branch badge (`PAX`) appears in the corner and Seeker contact cannot hurt the player (enemies continue chasing normally). Completing the sequence automatically undoes the pause triggered by `P`. Any run where PAX was active at any moment does not count toward `gapper_prism_best` (noted on the game-over screen), and PAX resets to off on reload.
+
+</details>
 
 [Game history and comparison overview](../README.md)
