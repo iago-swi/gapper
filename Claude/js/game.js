@@ -32,8 +32,58 @@
   const prefs = { get(k) { try { return localStorage.getItem('lightloom.' + k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem('lightloom.' + k, v); } catch (e) { } } };
   const LATE = 0.3;        // a turn pressed this far (in threads) past a knot still takes that knot
 
+  /* ------------------------------------------------------------ high scores */
+  // The ten best runs in this browser, best first: { n: initials, s: score, w: weave reached, d: 'YYYY-MM-DD' }.
+  const TOP = 10;
+  const cleanName = v => (String(v || '').toLocaleUpperCase().match(/[\p{L}\p{N}]/gu) || []).slice(0, 3).join('');
+  function loadScores() {              // stored data is read as untrusted: wrong shapes are dropped, the rest is normalised
+    let a = null; try { a = JSON.parse(prefs.get('scores')); } catch (e) { }
+    if (!Array.isArray(a)) a = [];
+    a = a.filter(r => r && Number.isFinite(r.s) && r.s > 0)
+      .map(r => ({ n: cleanName(r.n), s: Math.round(r.s), w: Number.isInteger(r.w) && r.w > 0 ? r.w : 0, d: /^\d{4}-\d\d-\d\d$/.test(r.d) ? r.d : '' }))
+      .sort((x, y) => y.s - x.s).slice(0, TOP);
+    if (!a.length && store.get() > 0) a.push({ n: '', s: store.get(), w: 0, d: '' });   // a best score from before the list existed
+    return a;
+  }
+  const scores = loadScores();
+  const saveScores = () => prefs.set('scores', JSON.stringify(scores));
+  function addScore(s, w) {            // returns the new entry, or null when the score does not make the list
+    if (s <= 0 || (scores.length >= TOP && s <= scores[TOP - 1].s)) return null;
+    const now = new Date(), two = v => String(v).padStart(2, '0');
+    const e = { n: cleanName(prefs.get('name')), s, w, d: `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}` };
+    let i = scores.findIndex(r => r.s < s); if (i < 0) i = scores.length;       // an equal score ranks below the older one
+    scores.splice(i, 0, e); scores.length = Math.min(scores.length, TOP); saveScores();
+    return e;
+  }
+  let mine = null;                     // the list entry made by the game that just ended
+
+  // The shared list lives on a small web service (see scores-worker/). With no address the game keeps
+  // to this device, and the tabs for choosing a list stay hidden.
+  const SHARED = '';
+  let view = SHARED && prefs.get('list') === 'shared' ? 'shared' : 'local';
+  const shared = { state: 'idle', top: [], rank: 0, run: null, seq: 0, timer: 0 };   // state: idle, loading, ok or error
+  const randomKey = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+  // Without a run this fetches the list. With one it sends the run first; the same key sent again only
+  // changes the initials, so a retry or an edit never makes a second entry.
+  function sharedLoad(run) {
+    if (!SHARED) return;
+    const seq = ++shared.seq, opt = AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {};
+    if (run) { opt.method = 'POST'; opt.body = JSON.stringify({ k: run.k, n: run.n, s: run.s, w: run.w }); }   // a plain-text body needs no CORS preflight
+    if (!shared.top.length) shared.state = 'loading';
+    fetch(SHARED + '?game=lightloom', opt)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => {
+        if (seq !== shared.seq) return;                // a newer request is on its way
+        shared.top = (Array.isArray(d.top) ? d.top : []).slice(0, TOP).filter(r => r && Number.isFinite(r.s))
+          .map(r => ({ n: cleanName(r.n), s: Math.round(r.s), w: Number.isInteger(r.w) && r.w > 0 ? r.w : 0, d: /^\d{4}-\d\d-\d\d$/.test(r.d) ? r.d : '', me: r.me === true }));
+        shared.rank = Number.isInteger(d.rank) ? d.rank : 0; shared.state = 'ok';
+      })
+      .catch(() => { if (seq === shared.seq) shared.state = 'error'; })
+      .then(refreshLists);
+  }
+
   const G = {
-    state: 'title', paused: false, level: 1, score: 0, lives: 3, best: store.get(),
+    state: 'title', paused: false, level: 1, score: 0, lives: 3, best: Math.max(store.get(), scores.length ? scores[0].s : 0),
     cols: 7, rows: 5, H: [], V: [], C: [], captured: 0,
     p: null, moths: [], cfg: null, want: [0, 0],
     ctrl: prefs.get('controls') === 'first' ? 'first' : 'third', turn: 0, turnAt: 0,   // first person: queued left (-1) or right (1) turn
@@ -57,8 +107,48 @@
   const el = {
     hud: $('hud'), score: $('score'), best: $('best'), weaveN: $('weaveN'), weaveName: $('weaveName'), prog: $('prog'), sparks: $('sparks'),
     chain: $('chain'), chainN: $('chainN'), banner: $('banner'), b1: $('b1'), b2: $('b2'), pops: $('pops'),
-    title: $('title'), tBest: $('tBest'), pause: $('pause'), over: $('over'), overLine: $('overLine'), overBest: $('overBest'), mute: $('mute')
+    title: $('title'), tBest: $('tBest'), pause: $('pause'), over: $('over'), overLine: $('overLine'), overBest: $('overBest'), mute: $('mute'),
+    overList: $('overList'), overNote: $('overNote'), nameRow: $('nameRow'), initials: $('initials'),
+    scores: $('scores'), scoreList: $('scoreList'), scoreNote: $('scoreNote')
   };
+  // Fills a list element with the list on view. Text goes in through textContent only, so a stored or
+  // downloaded name can never become markup.
+  function drawList(ol, note) {
+    const sh = view === 'shared', rows = sh ? shared.top : scores;
+    ol.textContent = '';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      const cell = (cls, text) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; li.appendChild(s); };
+      if (sh ? r.me : r === mine) li.className = 'mine';
+      cell('rank', i + 1); cell('name', r.n || '—'); cell('pts', fmt(r.s));
+      cell('wv', r.w ? 'Weave ' + r.w : ''); cell('day', r.d ? r.d.split('-').reverse().join('.') : '');
+      ol.appendChild(li);
+    });
+    let text = '';
+    if (!sh) text = rows.length ? '' : 'No scores yet.';
+    else if (shared.state === 'loading') text = 'Fetching the shared list…';
+    else if (shared.state === 'error') text = 'The shared list cannot be reached right now.' + (shared.run && mine ? ' Your score is kept on this device.' : '');
+    else if (!rows.length) text = 'No scores yet.';
+    else if (shared.run && shared.rank > rows.length) text = `Your score is number ${fmt(shared.rank)} on the shared list.`;
+    note.textContent = text; note.hidden = !text;
+  }
+  const scoresOpen = () => el.scores.classList.contains('show');
+  function refreshLists() {
+    if (el.over.classList.contains('show')) drawList(el.overList, el.overNote);
+    if (scoresOpen()) drawList(el.scoreList, el.scoreNote);
+  }
+  function setView(v) {
+    view = v === 'shared' && SHARED ? 'shared' : 'local'; prefs.set('list', view);
+    for (const b of document.querySelectorAll('.tabs button')) b.setAttribute('aria-pressed', b.dataset.list === view ? 'true' : 'false');
+    if (view === 'shared' && shared.state === 'idle') sharedLoad();
+    refreshLists();
+  }
+  function openScores() {
+    if (view === 'shared') sharedLoad();
+    el.scores.classList.add('show'); el.title.inert = true; refreshLists();
+    setTimeout(() => $('backBtn').focus(), 50);
+  }
+  function closeScores() { el.scores.classList.remove('show'); el.title.inert = false; $('scoresBtn').focus(); }
   let bannerTimer = 0;
   function banner(big, small, dur) {
     el.b1.textContent = big; el.b2.textContent = small || '';
@@ -179,13 +269,21 @@
   function gameOver() {
     G.state = 'over'; G.stateT = 0;
     const record = !G.practiced && G.score > G.best; if (record) { G.best = G.score; store.set(G.best); }
+    mine = G.practiced ? null : addScore(G.score, G.level);
+    shared.run = SHARED && !G.practiced && G.score > 0 ? { k: randomKey(), n: cleanName(prefs.get('name')), s: G.score, w: G.level } : null;
+    for (const r of shared.top) r.me = false;          // the mark of the run before this one
+    if (shared.run) sharedLoad(shared.run); else if (view === 'shared') sharedLoad();
     const woven = G.level - 1;
     el.overLine.textContent = `You finished ${woven} ${woven === 1 ? 'weave' : 'weaves'} and scored ${fmt(G.score)}.`;
-    el.overBest.textContent = G.practiced ? 'Practice runs do not count toward your best.' : record ? 'That is your best yet.' : `Your best is ${fmt(G.best)}.`;
+    el.overBest.textContent = G.practiced ? 'Practice runs do not count toward your best.' : record ? 'That is your best yet.'
+      : mine ? `That is number ${scores.indexOf(mine) + 1} on this device.` : `Your best is ${fmt(G.best)}.`;
     el.tBest.textContent = fmt(G.best);
-    el.over.classList.add('show'); el.hud.classList.remove('show');
+    const listed = !!(mine || shared.run), known = cleanName(prefs.get('name'));
+    el.nameRow.hidden = !listed; el.initials.value = known;
+    el.over.classList.add('show'); el.hud.classList.remove('show'); refreshLists();
     AudioFX.setMode('ambient'); AudioFX.over();
-    setTimeout(() => $('againBtn').focus(), 50);
+    // a first entry asks for initials; later ones reuse them, so Enter starts the next game straight away
+    setTimeout(() => (listed && !known ? el.initials : $('againBtn')).focus(), 50);
   }
   function levelClear() {
     G.state = 'clear'; G.stateT = 0; G.fwT = 0;
@@ -567,7 +665,8 @@
     if (G.pax) el.best.textContent = fmt(G.best);
   }
   function confirm() {
-    if (G.state === 'title' || G.state === 'title-done' || G.state === 'over') startGame();
+    if (scoresOpen()) closeScores();
+    else if (G.state === 'title' || G.state === 'title-done' || G.state === 'over') startGame();
     else if (G.paused) togglePause();
   }
   function togglePause() {
@@ -578,6 +677,7 @@
 
   let typed = '', pausedByP = false;
   addEventListener('keydown', e => {
+    if (e.target && e.target.tagName === 'INPUT') return;     // typing initials: no game key applies
     if (!e.repeat && e.key && e.key.length === 1) {
       typed = (typed + e.key.toLowerCase()).slice(-3);
       if (typed === 'pax') { typed = ''; togglePax(); if (G.paused && pausedByP) togglePause(); return; }   // the P of PAX had paused the game
@@ -587,13 +687,32 @@
     switch (e.code) {
       case 'Enter': case 'Space': if (document.activeElement && document.activeElement.tagName === 'BUTTON') return; e.preventDefault(); confirm(); break;
       case 'KeyP': togglePause(); pausedByP = G.paused; break;
-      case 'Escape': togglePause(); pausedByP = false; break;
+      case 'Escape': if (scoresOpen()) { closeScores(); break; } togglePause(); pausedByP = false; break;
       case 'KeyM': AudioFX.init(); toggleMute(); break;
       case 'KeyF': if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); break;
     }
   });
   $('startBtn').addEventListener('click', startGame);
   $('againBtn').addEventListener('click', startGame);
+  $('scoresBtn').addEventListener('click', openScores);
+  $('backBtn').addEventListener('click', closeScores);
+  for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('click', () => setView(b.dataset.list));
+  document.body.classList.toggle('shared', !!SHARED); setView(view);
+  el.initials.addEventListener('input', e => {
+    if (e.isComposing) return;
+    const n = el.initials.value = cleanName(el.initials.value); prefs.set('name', n);
+    if (mine) { mine.n = n; saveScores(); }
+    const run = shared.run;
+    if (run) {                         // show the change at once, send it when the typing stops
+      run.n = n; for (const r of shared.top) if (r.me) r.n = n;
+      clearTimeout(shared.timer); shared.timer = setTimeout(() => sharedLoad(run), 700);
+    }
+    refreshLists();
+  });
+  el.initials.addEventListener('keydown', e => {   // a steering key still held down must not type; Enter hands over to the button
+    if (e.repeat) e.preventDefault();
+    else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); $('againBtn').focus(); }
+  });
   el.mute.addEventListener('click', () => { AudioFX.init(); toggleMute(); el.mute.blur(); });
   for (const b of document.querySelectorAll('.ctrl button')) b.addEventListener('click', () => { setControls(b.dataset.ctrl); b.blur(); });
   setControls(G.ctrl);
@@ -630,5 +749,5 @@
   requestAnimationFrame(frame);
 
   // handy for debugging from the console: __loom.tick(120) advances two seconds
-  window.__loom = { G, steer, turn, setControls, togglePax, startGame, togglePause, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 1 / 60); draw(dt || 1 / 60); } };
+  window.__loom = { G, scores, shared, setView, steer, turn, setControls, togglePax, startGame, togglePause, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 1 / 60); draw(dt || 1 / 60); } };
 })();
