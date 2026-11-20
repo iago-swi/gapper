@@ -46,16 +46,20 @@ choice is remembered.
 Moths travel along the same threads and touching one costs a spark. You start with
 three sparks. Your defense is the loom itself: a freshly lit square stuns every moth
 within two squares of it for 1.8 seconds, and a stunned moth is harmless. Lighting
-squares in quick succession builds a chain that multiplies their score. The best
-score is kept in the browser.
+squares in quick succession builds a chain that multiplies their score.
+
+The ten best scores are kept in the browser, each with three initials, the weave
+reached and the date. The list is shown when a game ends and opens from the title
+screen under "High scores". A score that makes the list is saved at once; the initials
+can be typed or changed next to it and are remembered for the next game.
 
 <details>
 <summary>Easter egg (spoiler)</summary>
 
 Type `PAX` at any time, on any screen, to switch practice mode on or off. While it is
 on, the moths cannot hurt the shuttle, and a small olive branch with the word PAX
-shows in a corner of the screen. A run in which practice mode was used does not count
-toward the best score.
+shows in a corner of the screen. A run in which practice mode was used is not entered
+in the high scores.
 
 </details>
 
@@ -65,12 +69,12 @@ toward the best score.
 
 | | |
 | --- | --- |
-| Delivery | `index.html` plus three scripts in `js/`, about 1470 lines (81 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
+| Delivery | `index.html` plus three scripts in `js/`, about 1660 lines (94 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
 | Language | Plain JavaScript (ES2020) in classic scripts, no framework. |
 | Rendering | WebGL 2 (GLSL ES 3.00) for the whole scene and post-processing. HTML and CSS for the score bar, banners and screens. |
 | Sound | Web Audio API. Every sound is synthesized; there are no audio files. |
 | Type | Instrument Serif and Sora from Google Fonts, with system fallbacks. |
-| Storage | Two `localStorage` keys: `lightloom.best` for the best score and `lightloom.controls` for the steering choice. |
+| Storage | `localStorage` only: `lightloom.scores` (the high-score list), `lightloom.name` (the initials used last), `lightloom.best`, `lightloom.controls` (the steering choice) and `lightloom.list` (which list is on view). |
 | Requirements | A browser with WebGL 2. `EXT_color_buffer_float` is used for HDR render targets when present; otherwise the game falls back to 8-bit targets. |
 
 | File | Responsibility |
@@ -80,6 +84,7 @@ toward the best score.
 | [js/audio.js](js/audio.js) | Sequencer, instruments and sound effects. |
 | [index.html](index.html) | Markup and CSS for the title, score bar, banners, pause and game-over screens. |
 | [Lightloom.html](Lightloom.html) | Portable single-file edition. |
+| [scores-worker/](scores-worker/) | Web service for a high-score list shared between players. Not part of the game files; see [High scores](#high-scores). |
 
 ### The board
 
@@ -120,6 +125,40 @@ because a longer one would also catch turns meant for the next knot.
 
 On a touch screen a swipe counts after 16 pixels, and in first person a tap acts on
 touch-down.
+
+### High scores
+
+**On this device.** The list is a JSON array of up to ten entries (initials, score,
+weave reached, date) under one `localStorage` key. It is read as untrusted data:
+entries of the wrong shape are dropped, initials are reduced to three letters or
+digits, and names reach the page as text, never as markup. A score equal to an older
+one ranks below it. A best score saved before the list existed becomes its first
+entry, without initials. The game played online and a downloaded `Lightloom.html`
+keep separate lists, because a browser stores data per address.
+
+While the initials field has the focus, the game's own keys are switched off, so
+typing `A`, `M`, `P` or the easter-egg word does nothing but type. Key repeat is
+ignored there too, so a steering key still held down when the game ends cannot fill
+the field.
+
+**Shared between players.** GitHub Pages only serves files and cannot store a score,
+so a shared list needs a service elsewhere. [scores-worker/](scores-worker/) holds
+one: a Cloudflare Worker (about 80 lines) in front of a D1 database with a single
+table. The game contains the matching code: a second tab, "Everyone", next to "This
+device". **The service is not deployed yet, so the game currently ships with the
+shared list switched off** (`SHARED` in `js/game.js` is empty) and the tabs hidden.
+
+| | |
+| --- | --- |
+| Reading | `GET /?game=lightloom` returns the ten best runs. |
+| Writing | `POST` with the initials, the score, the weave reached and a random key that the game makes up for each run. Sending the same key again only changes the initials, so a retry or an edit never adds a second entry. |
+| What is stored | Game, key, initials, score, weave, time. No address and no browser details. |
+| Checks | A browser game cannot prove its score, so the service refuses only what the rules make impossible: it recomputes the lowest and highest score possible for the weave reached and rejects anything outside, anything not a multiple of 10, and malformed requests. A plausible invented score would pass. |
+| Limits | 30 new entries per minute for all players together; 200 rows kept. |
+| Failure | If the service cannot be reached the game says so and keeps the score on the device. It is not sent later. |
+
+The request body is sent as plain text, which browsers class as a simple request, so
+no CORS preflight is needed and a score costs one round trip.
 
 ### Rendering pipeline
 
@@ -240,7 +279,12 @@ simulation by fixed steps. The game was checked with scripted runs through this 
 real click and real key presses for starting, steering and pausing. The two control
 schemes, the late-turn window and practice mode were checked the same way, with
 simulated key presses; they have not been tried on a real touch screen. The screenshot
-was taken from such a run. Sound was not checked by ear, and frame rate on slower
+was taken from such a run. The high-score list was checked the same way (first entry,
+initials, ties, a full list, a score too low, practice runs, damaged stored data) at
+five window sizes from 320 × 568 to 1440 × 900. The shared list was tested against
+the Worker running on the development machine with a local database, including
+refused scores, renaming, ranking, the rate limit and an unreachable service; it has
+not run on Cloudflare itself. Sound was not checked by ear, and frame rate on slower
 graphics hardware has not been measured.
 
 [Game history and the other versions](../README.md)

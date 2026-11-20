@@ -16,7 +16,7 @@ To play offline, save a standalone file with the `.html` extension and open it i
 
 ![Lightloom in play on the third weave. Eight squares of blue-green glass are lit, the shuttle sits at the center of a shockwave, and two pink moths close in along the unwoven threads.](Claude/screenshot.jpg)
 
-Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread to weave it, and close all four sides of a square to light it. A freshly lit square stuns the moths close by. On a touchscreen, swipe. The title screen also offers first-person steering, where the left and right keys turn the shuttle.
+Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread to weave it, and close all four sides of a square to light it. A freshly lit square stuns the moths close by. On a touchscreen, swipe. The title screen also offers first-person steering, where the left and right keys turn the shuttle. The ten best scores are kept in the browser, with initials.
 
 ## ChatGPT version
 

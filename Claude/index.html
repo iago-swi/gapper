@@ -100,10 +100,11 @@
   body[data-ctrl="first"] .how.third, body:not([data-ctrl="first"]) .how.first { display: none; }
 
   /* controls chooser: two options, one always on */
-  .ctrl { display: inline-flex; padding: 3px; border: 1px solid var(--faint); border-radius: 999px; background: rgba(4, 5, 11, .35); }
-  .ctrl button { font: inherit; font-size: 14px; color: var(--dim); background: none; border: 0; border-radius: 999px; padding: 9px 17px; cursor: pointer; transition: background .2s ease, color .2s ease; }
-  .ctrl button:hover { color: var(--ink); }
-  .ctrl button[aria-pressed="true"] { color: var(--ink); background: rgba(244, 239, 230, .15); box-shadow: inset 0 0 0 1px rgba(244, 239, 230, .3); }
+  .ctrl, .tabs { padding: 3px; border: 1px solid var(--faint); border-radius: 999px; background: rgba(4, 5, 11, .35); }
+  .ctrl { display: inline-flex; }
+  .ctrl button, .tabs button { font: inherit; font-size: 14px; color: var(--dim); background: none; border: 0; border-radius: 999px; padding: 9px 17px; cursor: pointer; transition: background .2s ease, color .2s ease; }
+  .ctrl button:hover, .tabs button:hover { color: var(--ink); }
+  .ctrl button[aria-pressed="true"], .tabs button[aria-pressed="true"] { color: var(--ink); background: rgba(244, 239, 230, .15); box-shadow: inset 0 0 0 1px rgba(244, 239, 230, .3); }
   .center .ctrl { margin-top: 28px; }
 
   /* practice mode badge */
@@ -117,8 +118,10 @@
   #pax span { font-family: var(--serif); font-size: 21px; letter-spacing: .16em; line-height: 1; }
   @keyframes paxIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes rise { from { opacity: 0; transform: translateY(26px); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
-  .t-best { position: absolute; right: clamp(18px, 3vw, 40px); top: 22px; text-align: right; font-size: 13px; color: var(--dim); }
+  .t-best { position: absolute; right: clamp(18px, 3vw, 40px); top: 22px; text-align: right; font: inherit; font-size: 13px; color: var(--dim); background: none; border: 0; padding: 0; cursor: pointer; }
   .t-best b { display: block; font-weight: 400; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .t-best span { display: block; margin-top: 3px; text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 4px; transition: color .2s ease; }
+  .t-best:hover span { color: var(--ink); text-decoration-color: currentColor; }
 
   button.go {
     font: inherit; font-weight: 600; font-size: 16px; color: var(--void); background: var(--ink); border: 0; border-radius: 999px;
@@ -129,10 +132,35 @@
   button.go:active { transform: translateY(1px); }
   button:focus-visible { outline: 2px solid var(--dye); outline-offset: 4px; }
 
-  .center { display: grid; place-content: center; text-align: center; padding: 24px; background: radial-gradient(ellipse at center, rgba(4, 5, 11, .78) 0%, rgba(4, 5, 11, .5) 60%, rgba(4, 5, 11, .25) 100%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .center { display: flex; overflow-y: auto; touch-action: pan-y; text-align: center; padding: 24px; background: radial-gradient(ellipse at center, rgba(4, 5, 11, .78) 0%, rgba(4, 5, 11, .5) 60%, rgba(4, 5, 11, .25) 100%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .center h2 { margin: 0 0 .2em; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: clamp(52px, 9vw, 128px); line-height: .95; text-shadow: 0 0 60px var(--dye); }
   .center p { font-size: clamp(15px, 1.5vw, 18px); line-height: 1.6; font-weight: 300; }
-  .center .go { margin-top: 30px; justify-self: center; }
+  .center > div { margin: auto; }
+  .center .go { margin-top: 30px; }
+
+  /* ---------- high scores ---------- */
+  .tall h2 { font-size: clamp(40px, 6vw, 76px); }
+  .tabs { display: none; margin-top: 24px; }
+  .shared .tabs { display: inline-flex; }
+  .list {
+    list-style: none; margin: 22px 0 0; padding: 0; display: grid; justify-content: center; column-gap: 44px;
+    font-size: 15px; line-height: 1.8; color: var(--dim); font-variant-numeric: tabular-nums; text-align: left; white-space: nowrap;
+  }
+  .list:empty { display: none; }
+  .list li { display: grid; grid-template-columns: 1.5em 3.2em 5.2em 5.2em 5.8em; column-gap: 16px; }
+  .list .rank, .list .pts { text-align: right; }
+  .list .name { font-weight: 600; letter-spacing: .08em; color: var(--ink); }
+  .list .mine { color: var(--ink); text-shadow: 0 0 16px var(--dye); }
+  .list .mine .name { color: var(--dye); }
+  .center .note { font-size: 13px; color: var(--dim); margin-top: 14px; }
+  .name-row { display: block; margin-top: 18px; font-size: 14px; color: var(--dim); }
+  .name-row[hidden] { display: none; }
+  .name-row input {
+    font: inherit; font-size: 16px; font-weight: 600; letter-spacing: .08em; text-align: center; text-transform: uppercase; color: var(--ink);
+    width: 3.6em; margin-left: 10px; padding: 5px 0 4px; background: rgba(244, 239, 230, .08); border: 0; border-bottom: 1px solid var(--dye);
+    border-radius: 6px 6px 0 0; outline: none; caret-color: var(--dye); user-select: text; -webkit-user-select: text;
+  }
+  .name-row input:focus { background: rgba(244, 239, 230, .14); box-shadow: 0 1px 0 var(--dye), 0 12px 18px -12px var(--dye); }
 
   .nogl-msg { display: none; position: fixed; inset: 0; place-content: center; text-align: center; padding: 24px; line-height: 1.6; }
   .nogl .nogl-msg { display: grid; }
@@ -145,6 +173,30 @@
     .t-row { gap: 14px 18px; margin-top: 22px; }
     #mute { bottom: 12px; }
     #pax { bottom: 12px; }
+  }
+  @media (max-width: 520px) {
+    .list li { grid-template-columns: 1.5em 3.2em 5.2em 5.2em; column-gap: 12px; }
+    .list .day { display: none; }
+  }
+  @media (max-width: 359px) {
+    .list li { grid-template-columns: 1.5em 3.2em 5.2em; }
+    .list .wv { display: none; }
+  }
+  @media (max-height: 620px) and (max-width: 659px) {   /* a small phone: the same ten rows, set tighter */
+    .center { padding: 14px 24px; }
+    .tabs { margin-top: 12px; }
+    .tabs button { padding: 7px 15px; }
+    .list { line-height: 1.55; margin-top: 12px; }
+    .name-row { margin-top: 10px; }
+    .center .go { margin-top: 16px; padding: 12px 26px; }
+  }
+  @media (max-height: 700px) and (min-width: 660px) {   /* a low, wide window: two columns of five */
+    .tall h2 { font-size: 38px; }
+    .tabs { margin-top: 14px; }
+    .list { grid-template-rows: repeat(5, auto); grid-auto-flow: column; line-height: 1.6; margin-top: 14px; }
+    .list li { grid-template-columns: 1.5em 3.2em 5.2em 5.2em; }
+    .list .day { display: none; }
+    .center .go { margin-top: 20px; }
   }
   @media (prefers-reduced-motion: reduce) {
     h1, .lede, .t-row, .keys, .pax #pax { animation: none; }
@@ -167,7 +219,7 @@
 <div id="pops"></div>
 
 <section id="title" class="screen show">
-  <div class="t-best">Best<b id="tBest">0</b></div>
+  <button id="scoresBtn" class="t-best" type="button">Best<b id="tBest">0</b><span>High scores</span></button>
   <div class="t-block">
     <h1>Lightloom</h1>
     <p class="lede">Run your shuttle along every thread. Close a square and it lights up. Moths hunt the light, but a freshly lit square stuns the ones close by.</p>
@@ -197,12 +249,32 @@
   </div>
 </section>
 
-<section id="over" class="screen center">
+<section id="over" class="screen center tall">
   <div>
     <h2>The thread is cut</h2>
     <p id="overLine"></p>
     <p id="overBest"></p>
+    <div class="tabs" role="group" aria-label="Which list">
+      <button type="button" data-list="local" aria-pressed="true">This device</button>
+      <button type="button" data-list="shared" aria-pressed="false">Everyone</button>
+    </div>
+    <ol id="overList" class="list" aria-label="High scores"></ol>
+    <p id="overNote" class="note" hidden></p>
+    <label id="nameRow" class="name-row" hidden>Your initials <input id="initials" maxlength="3" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
     <button id="againBtn" class="go" type="button">Weave again</button>
+  </div>
+</section>
+
+<section id="scores" class="screen center tall">
+  <div>
+    <h2>High scores</h2>
+    <div class="tabs" role="group" aria-label="Which list">
+      <button type="button" data-list="local" aria-pressed="true">This device</button>
+      <button type="button" data-list="shared" aria-pressed="false">Everyone</button>
+    </div>
+    <ol id="scoreList" class="list" aria-label="High scores"></ol>
+    <p id="scoreNote" class="note" hidden></p>
+    <button id="backBtn" class="go" type="button">Back</button>
   </div>
 </section>
 
