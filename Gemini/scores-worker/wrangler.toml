@@ -1,0 +1,10 @@
+# Cloudflare Worker for the shared GAPPER // PRISM high-score list.
+name = "prism-scores"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+send_metrics = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prism-scores"
+database_id = "962306b5-5e3d-4d22-9647-4459047765cf"

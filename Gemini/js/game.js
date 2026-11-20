@@ -48,10 +48,11 @@ window.Gapper = window.Gapper || {};
       this.selectedStartStage = 0;
 
       this.score = 0;
-      this.bestScore = Number(safeStorageGet(BEST_STORAGE_KEY) || 0);
+      this.bestScore = G.Scores ? G.Scores.getDeviceBest() : Number(safeStorageGet(BEST_STORAGE_KEY) || 0);
       this.controlScheme = safeStorageGet(CONTROL_STORAGE_KEY) === 'first' ? 'first' : 'third';
       this.paxEnabled = false;
       this.paxUsedThisGame = false;
+      this._gameOverTimeout = null;
       this.lives = 3;
       this.combo = 1;
       this.comboTimer = 0;
@@ -95,6 +96,10 @@ window.Gapper = window.Gapper || {};
     }
 
     startNewGame(startStageIndex = this.selectedStartStage) {
+      if (this._gameOverTimeout) {
+        clearTimeout(this._gameOverTimeout);
+        this._gameOverTimeout = null;
+      }
       this.sound.init();
       this.selectedStartStage = startStageIndex;
       this.stageIndex = startStageIndex;
@@ -102,10 +107,16 @@ window.Gapper = window.Gapper || {};
       this.lives = 3;
       this.totalCellsSealed = 0;
       this.paxUsedThisGame = this.paxEnabled;
+      this.syncBestScore();
       this.mode = 'playing';
       this._loadStage(this.stageIndex, false);
       this.onStateChange('playing', this.graph.level);
       this._emitHud();
+    }
+
+    syncBestScore() {
+      this.bestScore = G.Scores ? G.Scores.getDeviceBest() : Number(safeStorageGet(BEST_STORAGE_KEY) || 0);
+      return this.bestScore;
     }
 
     setControlScheme(scheme) {
@@ -164,6 +175,11 @@ window.Gapper = window.Gapper || {};
     }
 
     returnToTitle() {
+      if (this._gameOverTimeout) {
+        clearTimeout(this._gameOverTimeout);
+        this._gameOverTimeout = null;
+      }
+      this.syncBestScore();
       this.mode = 'attract';
       this._loadStage(this.selectedStartStage, true);
       this.sound.setAmbientIntensity(false, 0, false);
@@ -1340,7 +1356,9 @@ window.Gapper = window.Gapper || {};
       this._emitHud();
 
       if (this.lives <= 0) {
-        setTimeout(() => {
+        if (this._gameOverTimeout) clearTimeout(this._gameOverTimeout);
+        this._gameOverTimeout = setTimeout(() => {
+          this._gameOverTimeout = null;
           if (this.mode === 'playing' && this.lives <= 0) {
             this._triggerGameOver();
           }
@@ -1487,10 +1505,6 @@ window.Gapper = window.Gapper || {};
 
     _addScore(pts) {
       this.score += Math.round(pts);
-      if (!this.paxUsedThisGame && this.score > this.bestScore) {
-        this.bestScore = this.score;
-        safeStorageSet(BEST_STORAGE_KEY, String(this.bestScore));
-      }
     }
 
     _finishStageClear() {
@@ -1513,7 +1527,6 @@ window.Gapper = window.Gapper || {};
       this.onStateChange('gameOver', {
         score: this.score,
         bestScore: this.bestScore,
-        isNewBest: !this.paxUsedThisGame && this.score > 0 && this.score >= this.bestScore,
         paxUsed: this.paxUsedThisGame,
         stageNum: this.stageIndex + 1,
         cellsSealed: this.totalCellsSealed

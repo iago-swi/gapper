@@ -29,6 +29,8 @@ Two steering schemes are selectable on both the title screen and the pause menu 
 
 In **First person**, the ship begins moving automatically at the start of a sector and after losing a life. At each junction it takes a queued turn if open, otherwise continues straight if open, otherwise rounds a single open corner unprompted, or waits when both left and right are open (measuring left/right from its arrival direction). Standard HTML5 Gamepad controllers are also supported.
 
+Two high-score lists track the ten best runs: **This device** (stored locally in your browser) and **Everyone** (shared between all players of Prism). Open **High scores** next to your best score on the title screen to browse either list, or enter up to three initials right below the leaderboard on the game-over screen whenever your run qualifies.
+
 | Mechanic / Entity | Behaviour |
 | --- | --- |
 | **Plasma Gap (`Space`)** | Carves a temporary `4.8 s` high-voltage rift in the rail behind you (up to 3 charges, shown as orbiting diegetic motes around your sprite and in the HUD; recharges passively every `4.2 s` plus `+0.5` per sealed chamber). Neither you nor Seekers can cross an active Gap. |
@@ -44,24 +46,29 @@ In **First person**, the ship begins moving automatically at the start of a sect
 | | |
 | --- | --- |
 | Delivery | Zero runtime dependencies, zero build step, zero external assets (optional Google Fonts with clean system fallbacks). Works offline over `file://` or HTTP. |
-| Language | Plain JavaScript (ES2020) organized into 6 clean modules under `window.Gapper`. |
+| Language | Plain JavaScript (ES2020) organized into 7 clean modules under `window.Gapper`. |
 | Rendering | Hybrid high-DPI Canvas 2D architectural vector scene piped into a 4-pass **WebGL 2 (GLSL ES 3.00)** post-processing & procedural nebula pipeline, with automatic Canvas 2D fallback. |
 | Audio | Real-time procedural **Web Audio API** synthesizer with master dynamics compressor, filtered ambient drone, pentatonic rail plucks, harmonic seal chords, and noise-shaped plasma SFX. |
-| Storage | Two `localStorage` keys: `gapper_prism_best` (high score) and `gapper_prism_controls` (`"third"` or `"first"` steering scheme). |
+| Storage | Five `localStorage` keys: `gapper_prism_scores` (device top-10 JSON array), `gapper_prism_initials` (last used initials), `gapper_prism_best` (synced top score), `gapper_prism_list` (`"device"` or `"shared"` active tab), and `gapper_prism_controls` (`"third"` or `"first"` steering scheme). |
 
 ```text
 Gemini/
-├── index.html       # Semantic HUD, title/sector picker, overlays, and canvas mount
-├── styles.css       # Frosted obsidian-glass UI, SVG progress ring, and touch controls
-├── screenshot.png   # Gameplay preview
-├── README.md        # Technical documentation
+├── index.html           # Semantic HUD, title/sector picker, high-score & game-over modals
+├── styles.css           # Frosted obsidian-glass UI, responsive 10-row tables, touch controls
+├── screenshot.png       # Gameplay preview
+├── README.md            # Technical documentation
+├── scores-worker/       # Dedicated Cloudflare Worker + D1 service (prism-scores)
+│   ├── schema.sql
+│   ├── worker.js
+│   └── wrangler.toml
 └── js/
-    ├── levels.js    # 6 handcrafted sectors, palettes, planar graph & void-cutout builder
-    ├── audio.js     # Procedural Web Audio API synthesizer & dynamic ambient drone
-    ├── shaders.js   # 4-pass WebGL 2 bloom, procedural aurora void, shockwaves & ACES tone map
-    ├── renderer.js  # High-DPI 2.5D monolith slab, crystalline tiles, plasma arcs & sprites
-    ├── game.js      # Core simulation, continuous interval painting, BFS Seeker AI & attract demo
-    └── main.js      # DPR resize handling, HUD sync, keyboard/touch/gamepad wiring & RAF loop
+    ├── levels.js        # 6 handcrafted sectors, palettes, planar graph & void-cutout builder
+    ├── scores.js        # Device top-10 storage, sanitization, and shared score-service client
+    ├── audio.js         # Procedural Web Audio API synthesizer & dynamic ambient drone
+    ├── shaders.js       # 4-pass WebGL 2 bloom, procedural aurora void, shockwaves & ACES tone map
+    ├── renderer.js      # High-DPI 2.5D monolith slab, crystalline tiles, plasma arcs & sprites
+    ├── game.js          # Core simulation, continuous interval painting, BFS Seeker AI & attract demo
+    └── main.js          # DPR resize, HUD sync, high-score UI, keyboard/touch/gamepad & RAF loop
 ```
 
 ### Planar graph & void-cutout builder (`js/levels.js`)
@@ -80,6 +87,22 @@ Rather than hard-coding uniform grids or manual edge tables, each sector is defi
 - **Immediate `keydown` steering & input buffering:** Steering keys (ignoring auto-repeat) and touch-down inputs are processed synchronously inside the event handler rather than waiting for the next animation frame. In third person, the opposite direction reverses immediately mid-segment and any perpendicular direction stays buffered until taken at the next junction where it is open. In first person, queued relative left/right turns fire at the first junction where that turn is open and lapse after `1.0 s`. Touch swipes in third person trigger after `14 CSS px` (`<= 16 CSS px`).
 - **Late-turn window (`0.3` segment):** In both control schemes, pressing a sideways turn while no more than `0.3` of a segment past the entry junction (and not reversing) immediately takes that turn at that junction—placing the ship on the new segment at the exact distance already travelled, reverting any partial trace on the abandoned segment, and storing a visual offset (`oldPos - newPos`) that decays smoothly via `exp(-30 * dt)` (~`0.1 s`) so the rendered sprite never jumps while collisions use the new logical position at once.
 - **Live attract-mode AI:** On the title screen, a lightweight autonomous Gapper navigates toward unpainted rails while evading Seekers and deploying Plasma Gaps behind the glassmorphic menu.
+
+### High scores
+
+**On this device (`js/scores.js`).** The top ten runs are stored as a single JSON array under `gapper_prism_scores` (`{ n, s, w, d }` — initials up to 3 uppercase letters/digits, rounded score, sector reached, and local `YYYY-MM-DD` date displayed as `DD.MM.YYYY`). Stored data is treated as untrusted: malformed entries are dropped, initials are stripped to 3 alphanumeric characters, and all table cells are rendered with `textContent` rather than HTML. Equal scores rank below older entries, `gapper_prism_best` always mirrors the top entry, and any pre-existing legacy `gapper_prism_best` migrates into an empty list without initials (shown as `—`). While the **Your initials** field (`16 px`, `user-select: text`) has focus on the game-over screen, all game keys and auto-repeat events are blocked; `Enter` or `Escape` moves focus to **Play Again** without launching a run. In low, wide viewports (such as `900 × 560`) the ten rows arrange into two columns of five; narrow viewports drop the date column first (`<= 520 px`) and then the sector column (`<= 350 px`), scrolling cleanly if taller than the window.
+
+**Shared between players (`scores-worker/`).** The shared list is **switched on** and connects to Prism's dedicated Cloudflare Worker + D1 database at `https://prism-scores.iago-swi.workers.dev/` (configured via the single constant `SHARED` in `js/scores.js`; setting `SHARED = ''` hides the tabs and disables all network requests).
+
+| | |
+| --- | --- |
+| Status | **Switched on** (`SHARED = 'https://prism-scores.iago-swi.workers.dev/'`). |
+| Endpoints | `GET /` returns `{ top: [{ n, s, w, d }] }`. `POST /` with plain-text JSON `{ k, n, s, w }` (sent without a `Content-Type` header so browsers treat it as a CORS simple request with no preflight) returns `{ top: [{ n, s, w, d, me? }], rank }`. |
+| Run key & edits | Each qualifying finished run generates a random 32-char lowercase hex `k` via `crypto.getRandomValues`. Editing initials updates the highlighted row immediately and re-POSTs with the same `k` `700 ms` after the last keystroke, updating only initials without creating duplicates. `k` is never sent back out. |
+| What is stored | Key, initials, score, sector reached, UTC date, and timestamp (`ms`). Nothing else: no IP address and no browser details. |
+| Validation checks | Refuses non-integers, malformed payloads, sectors outside `1..6`, scores not divisible by `5`, and scores outside `prismScoreRange(w)`: `min = 15` (one traced conduit on any chosen starting sector `1..6`) and `max` equal to the exact sum of conduit points (`edges × 15`), maximum chamber points (`cellBaseSum × 8 × 2`), clear bonuses (`1000 + (sector - 1) × 500`), and a `25,000` per-sector combat/shard ceiling across sectors `1..w` plus up to 3 extra 6-sector loops. |
+| Limits | At most `30` new entries per minute across all players (`HTTP 429`; renames of an existing `k` are exempt); best `200` rows retained; equal scores rank in order of arrival. |
+| Failure & timeouts | Client requests time out after `8 s` and ignore stale responses superseded by newer requests. If unreachable, the **Everyone** tab reports that the shared list cannot be reached (adding that the score is kept on this device when locally listed) and does not retry later. |
 
 ### Multi-pass WebGL 2 optical pipeline (`js/shaders.js` + `js/renderer.js`)
 
