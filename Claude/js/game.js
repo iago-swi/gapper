@@ -29,11 +29,15 @@
   const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
   const fmt = n => Math.round(n).toLocaleString('de-CH');
   const store = { get() { try { return +localStorage.getItem('lightloom.best') || 0; } catch (e) { return 0; } }, set(v) { try { localStorage.setItem('lightloom.best', v); } catch (e) { } } };
+  const prefs = { get(k) { try { return localStorage.getItem('lightloom.' + k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem('lightloom.' + k, v); } catch (e) { } } };
+  const LATE = 0.3;        // a turn pressed this far (in threads) past a knot still takes that knot
 
   const G = {
     state: 'title', paused: false, level: 1, score: 0, lives: 3, best: store.get(),
     cols: 7, rows: 5, H: [], V: [], C: [], captured: 0,
     p: null, moths: [], cfg: null, want: [0, 0],
+    ctrl: prefs.get('controls') === 'first' ? 'first' : 'third', turn: 0, turnAt: 0,   // first person: queued left (-1) or right (1) turn
+    pax: false, practiced: false,
     t: 0, stateT: 0, buildT: 0, levelTime: 0, combo: 0, comboT: 0,
     dye: 0, pal: {}, palFrom: {}, palTo: DYES[0], palT: 1,
     shake: 0, chroma: 0, glitch: 0, flash: 0, fade: 0, fwT: 0
@@ -68,7 +72,7 @@
     d.style.left = (u * innerWidth) + 'px'; d.style.top = ((1 - v) * innerHeight) + 'px';
     el.pops.appendChild(d); d.addEventListener('animationend', () => d.remove());
   }
-  function hudScore() { el.score.textContent = fmt(G.score); if (G.score > G.best) el.best.textContent = fmt(G.score); }
+  function hudScore() { el.score.textContent = fmt(G.score); if (G.score > G.best && !G.practiced) el.best.textContent = fmt(G.score); }
   function hudLives() { el.sparks.innerHTML = ''; for (let i = 0; i < G.lives; i++) el.sparks.appendChild(document.createElement('i')); el.sparks.setAttribute('aria-label', G.lives + ' sparks left'); }
   function hudProg() { el.prog.style.width = (100 * G.captured / (G.cols * G.rows)) + '%'; }
   function hudLevel() { el.weaveN.textContent = 'Weave ' + G.level; el.weaveName.textContent = DYES[G.dye].name; }
@@ -118,7 +122,7 @@
   const edgeBetween = (x0, y0, x1, y1) => y0 === y1 ? G.H[y0][Math.min(x0, x1)] : G.V[Math.min(y0, y1)][x0];
   const validDir = (ax, ay, dx, dy) => (dx || dy) && ax + dx >= 0 && ay + dy >= 0 && ax + dx <= G.cols && ay + dy <= G.rows;
   const adjCells = (x0, y0, x1, y1) => y0 === y1 ? [[Math.min(x0, x1), y0 - 1], [Math.min(x0, x1), y0]] : [[x0 - 1, Math.min(y0, y1)], [x0, Math.min(y0, y1)]];
-  const actor = (ax, ay) => ({ ax, ay, dx: 0, dy: 0, pdx: 0, pdy: 0, s: 1, t: 0, x: ax, y: ay });
+  const actor = (ax, ay) => ({ ax, ay, dx: 0, dy: 0, pdx: 0, pdy: 0, s: 1, t: 0, x: ax, y: ay, ox: 0, oy: 0 });
 
   function levelCfg(n) {
     const [cols, rows] = SIZES[Math.min(n - 1, SIZES.length - 1)];
@@ -131,7 +135,7 @@
     const spots = [[0, 0], [G.cols, 0], [cx, 0]];
     G.moths = [];
     for (let i = 0; i < G.cfg.moths; i++) { const m = actor(spots[i][0], spots[i][1]); m.kind = i; m.stun = 0; m.wake = 1.4 + i * 0.7; m.seed = rnd(0, 6); G.moths.push(m); }
-    G.want = [0, 0];
+    G.want = [0, 0]; G.turn = 0;
   }
 
   /* ------------------------------------------------------------ flow */
@@ -142,7 +146,7 @@
   }
   function startGame() {
     AudioFX.init();
-    G.score = 0; G.lives = 3; G.paused = false;
+    G.score = 0; G.lives = 3; G.paused = false; G.practiced = G.pax;
     el.title.classList.remove('show'); el.over.classList.remove('show'); el.pause.classList.remove('show'); el.hud.classList.add('show');
     el.best.textContent = fmt(G.best); hudScore(); hudLives();
     G.dye = -1; startLevel(1); AudioFX.begin();
@@ -174,10 +178,10 @@
   }
   function gameOver() {
     G.state = 'over'; G.stateT = 0;
-    const record = G.score > G.best; if (record) { G.best = G.score; store.set(G.best); }
+    const record = !G.practiced && G.score > G.best; if (record) { G.best = G.score; store.set(G.best); }
     const woven = G.level - 1;
     el.overLine.textContent = `You finished ${woven} ${woven === 1 ? 'weave' : 'weaves'} and scored ${fmt(G.score)}.`;
-    el.overBest.textContent = record ? 'That is your best yet.' : `Your best is ${fmt(G.best)}.`;
+    el.overBest.textContent = G.practiced ? 'Practice runs do not count toward your best.' : record ? 'That is your best yet.' : `Your best is ${fmt(G.best)}.`;
     el.tBest.textContent = fmt(G.best);
     el.over.classList.add('show'); el.hud.classList.remove('show');
     AudioFX.setMode('ambient'); AudioFX.over();
@@ -268,11 +272,33 @@
     }
     e.x = e.ax + e.dx * e.t; e.y = e.ay + e.dy * e.t;
   }
+  const leftOf = h => [h[1], -h[0] || 0], rightOf = h => [-h[1] || 0, h[0]];     // on screen, y runs down
   function choosePlayer(e) {
+    if (G.ctrl === 'first') {          // steered from the shuttle's point of view: it keeps going, you turn it
+      const h = (e.pdx || e.pdy) ? [e.pdx, e.pdy] : [0, -1];
+      let d = null;
+      if (G.turn && G.t - G.turnAt < 1) { const q = G.turn < 0 ? leftOf(h) : rightOf(h); if (validDir(e.ax, e.ay, q[0], q[1])) { d = q; G.turn = 0; } }
+      if (!d && validDir(e.ax, e.ay, h[0], h[1])) d = h;
+      if (!d) {                        // wall ahead: round a corner unprompted, wait at a T
+        const l = leftOf(h), r = rightOf(h), lv = validDir(e.ax, e.ay, l[0], l[1]), rv = validDir(e.ax, e.ay, r[0], r[1]);
+        if (lv !== rv) d = lv ? l : r;
+      }
+      if (!d) return false;
+      e.dx = d[0]; e.dy = d[1]; return true;
+    }
     const [a, b] = G.want;
     if (validDir(e.ax, e.ay, a, b)) { e.dx = a; e.dy = b; }
     else if (validDir(e.ax, e.ay, e.pdx, e.pdy)) { e.dx = e.pdx; e.dy = e.pdy; }
     else { e.pdx = e.pdy = 0; return false; }
+    return true;
+  }
+  // A turn pressed just after its knot went by is taken as if it had been pressed in time: the shuttle
+  // moves onto the new thread at the same distance from the knot, and the drawn position eases across.
+  function lateTurn(p, dx, dy) {
+    if (p.s < 0 || p.t > LATE || !validDir(p.ax, p.ay, dx, dy)) return false;
+    const x0 = p.x, y0 = p.y;
+    p.dx = dx; p.dy = dy; p.x = p.ax + dx * p.t; p.y = p.ay + dy * p.t;
+    p.ox += x0 - p.x; p.oy += y0 - p.y;
     return true;
   }
   function chooseBot(e) {            // attract mode: head for the nearest unwoven thread
@@ -319,7 +345,7 @@
       if (m.wake > 0) { m.wake -= dt; continue; }
       if (m.stun > 0) { m.stun -= dt; continue; }
       stepActor(m, G.cfg.mSpeed * dt, chooseMoth);
-      if (lethal && G.state === 'play' && G.p.invuln <= 0 && Math.hypot(m.x - G.p.x, m.y - G.p.y) < 0.42) kill();
+      if (lethal && G.state === 'play' && !G.pax && G.p.invuln <= 0 && Math.hypot(m.x - G.p.x, m.y - G.p.y) < 0.42) kill();
     }
   }
   function trail(p, dt) {
@@ -361,6 +387,7 @@
         break;
       case 'play':
         G.levelTime += dt; if (p.invuln > 0) p.invuln -= dt;
+        if (p.ox || p.oy) { const f = Math.exp(-dt * 30); p.ox *= f; p.oy *= f; if (Math.abs(p.ox) + Math.abs(p.oy) < 0.004) p.ox = p.oy = 0; }
         stepActor(p, G.cfg.pSpeed * dt, choosePlayer, weave);
         if (G.state === 'play') updateMoths(dt, true);
         trail(p, dt);
@@ -485,7 +512,7 @@
       const s = ap(Math.hypot(wx(p.x), wz(p.y)));
       const blink = p.invuln > 0 ? 0.45 + 0.55 * Math.abs(Math.sin(t * 16)) : 1;
       if (s > 0) {
-        const X = wx(p.x), Z = wz(p.y), Y = 0.36 + 0.03 * Math.sin(t * 6);
+        const X = wx(p.x + p.ox), Z = wz(p.y + p.oy), Y = 0.36 + 0.03 * Math.sin(t * 6);
         bill(X, 0.03, Z, 0.9 * s, 0, tr[0], tr[1], tr[2], 0.5 * blink, 0, 0, 0, 1);
         bill(X, Y, Z, 0.62 * s, 0, tr[0] * .7 + .3, tr[1] * .7 + .3, tr[2] * .7 + .3, blink, 1, 0, 0, 0);
       }
@@ -509,11 +536,35 @@
 
   /* ------------------------------------------------------------ input */
   const KEYS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
-  function steer(dx, dy) {
-    if (G.paused || (G.state !== 'play' && G.state !== 'intro')) return;
+  const steerable = () => !G.paused && (G.state === 'play' || G.state === 'intro');
+  function steer(dx, dy) {             // third person: point where to go
+    if (!steerable()) return;
     G.want = [dx, dy];
     const p = G.p;
-    if (G.state === 'play' && (p.dx || p.dy) && dx === -p.dx * p.s && dy === -p.dy * p.s) p.s = -p.s;
+    if (G.state !== 'play' || (!p.dx && !p.dy)) return;      // standing at a knot: the next update takes it
+    const hx = p.dx * p.s, hy = p.dy * p.s;
+    if (dx === -hx && dy === -hy) p.s = -p.s;                // straight back: reverse at once
+    else if (dx !== hx || dy !== hy) lateTurn(p, dx, dy);    // sideways: take the knot just passed if it was open
+  }
+  function turn(side) {                // first person: -1 turns left of the heading, 1 turns right
+    if (!steerable()) return;
+    const p = G.p;
+    G.turn = side; G.turnAt = G.t;
+    if (G.state !== 'play' || (!p.dx && !p.dy) || p.s < 0) return;
+    const q = side < 0 ? leftOf([p.dx, p.dy]) : rightOf([p.dx, p.dy]);
+    if (lateTurn(p, q[0], q[1])) G.turn = 0;
+  }
+  function press(dx, dy) { if (G.ctrl === 'first') { if (dx) turn(dx); } else steer(dx, dy); }
+  function setControls(mode) {
+    G.ctrl = mode === 'first' ? 'first' : 'third'; prefs.set('controls', G.ctrl);
+    G.turn = 0; G.want = [0, 0];
+    document.body.dataset.ctrl = G.ctrl;
+    for (const b of document.querySelectorAll('.ctrl button')) b.setAttribute('aria-pressed', b.dataset.ctrl === G.ctrl ? 'true' : 'false');
+  }
+  function togglePax() {               // hidden practice mode: the moths cannot hurt the shuttle
+    G.pax = !G.pax; if (G.pax) G.practiced = true;
+    document.body.classList.toggle('pax', G.pax);
+    if (G.pax) el.best.textContent = fmt(G.best);
   }
   function confirm() {
     if (G.state === 'title' || G.state === 'title-done' || G.state === 'over') startGame();
@@ -525,12 +576,18 @@
   }
   function toggleMute() { const m = AudioFX.toggleMute(); el.mute.textContent = m ? 'Sound off' : 'Sound on'; el.mute.setAttribute('aria-pressed', m ? 'true' : 'false'); }
 
+  let typed = '', pausedByP = false;
   addEventListener('keydown', e => {
+    if (!e.repeat && e.key && e.key.length === 1) {
+      typed = (typed + e.key.toLowerCase()).slice(-3);
+      if (typed === 'pax') { typed = ''; togglePax(); if (G.paused && pausedByP) togglePause(); return; }   // the P of PAX had paused the game
+    }
     if (e.repeat && !KEYS[e.code]) return;
-    if (KEYS[e.code]) { e.preventDefault(); AudioFX.init(); steer(KEYS[e.code][0], KEYS[e.code][1]); return; }
+    if (KEYS[e.code]) { e.preventDefault(); AudioFX.init(); if (!e.repeat) press(KEYS[e.code][0], KEYS[e.code][1]); return; }
     switch (e.code) {
       case 'Enter': case 'Space': if (document.activeElement && document.activeElement.tagName === 'BUTTON') return; e.preventDefault(); confirm(); break;
-      case 'KeyP': case 'Escape': togglePause(); break;
+      case 'KeyP': togglePause(); pausedByP = G.paused; break;
+      case 'Escape': togglePause(); pausedByP = false; break;
       case 'KeyM': AudioFX.init(); toggleMute(); break;
       case 'KeyF': if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); break;
     }
@@ -538,16 +595,22 @@
   $('startBtn').addEventListener('click', startGame);
   $('againBtn').addEventListener('click', startGame);
   el.mute.addEventListener('click', () => { AudioFX.init(); toggleMute(); el.mute.blur(); });
+  for (const b of document.querySelectorAll('.ctrl button')) b.addEventListener('click', () => { setControls(b.dataset.ctrl); b.blur(); });
+  setControls(G.ctrl);
 
   let touch = null;
-  addEventListener('touchstart', e => { const t = e.changedTouches[0]; touch = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  const onButton = e => e.target && e.target.closest && e.target.closest('button');
+  addEventListener('touchstart', e => {
+    const t = e.changedTouches[0]; touch = { x: t.clientX, y: t.clientY };
+    if (G.ctrl === 'first' && !onButton(e)) turn(t.clientX < innerWidth / 2 ? -1 : 1);    // tap a side to turn that way
+  }, { passive: true });
   addEventListener('touchmove', e => {
-    if (!touch) return; const t = e.changedTouches[0], dx = t.clientX - touch.x, dy = t.clientY - touch.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+    if (!touch || G.ctrl === 'first') return; const t = e.changedTouches[0], dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) return;
     if (Math.abs(dx) > Math.abs(dy)) steer(Math.sign(dx), 0); else steer(0, Math.sign(dy));
     touch = { x: t.clientX, y: t.clientY };
   }, { passive: true });
-  addEventListener('touchend', () => { touch = null; if (G.paused) togglePause(); }, { passive: true });
+  addEventListener('touchend', e => { touch = null; if (G.paused && !onButton(e)) togglePause(); }, { passive: true });
   addEventListener('blur', () => { if (G.state === 'play' && !G.paused) togglePause(); });
   addEventListener('resize', () => { if (GFX.resize()) fitCamera(); });
 
@@ -567,5 +630,5 @@
   requestAnimationFrame(frame);
 
   // handy for debugging from the console: __loom.tick(120) advances two seconds
-  window.__loom = { G, steer, startGame, togglePause, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 1 / 60); draw(dt || 1 / 60); } };
+  window.__loom = { G, steer, turn, setControls, togglePax, startGame, togglePause, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 1 / 60); draw(dt || 1 / 60); } };
 })();

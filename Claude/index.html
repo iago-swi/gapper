@@ -95,7 +95,27 @@
   }
   .lede { font-size: clamp(16px, 1.45vw, 19px); line-height: 1.55; font-weight: 300; max-width: 34em; animation: rise 1.6s .15s cubic-bezier(.2, .7, .2, 1) both; }
   .t-row { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; margin-top: 28px; animation: rise 1.6s .3s cubic-bezier(.2, .7, .2, 1) both; }
-  .keys { font-size: 13px; line-height: 1.9; color: var(--dim); max-width: 30em; }
+  .keys { font-size: 13px; line-height: 1.9; color: var(--dim); max-width: 40em; margin-top: 18px; animation: rise 1.6s .4s cubic-bezier(.2, .7, .2, 1) both; }
+  .keys span { display: block; }
+  body[data-ctrl="first"] .how.third, body:not([data-ctrl="first"]) .how.first { display: none; }
+
+  /* controls chooser: two options, one always on */
+  .ctrl { display: inline-flex; padding: 3px; border: 1px solid var(--faint); border-radius: 999px; background: rgba(4, 5, 11, .35); }
+  .ctrl button { font: inherit; font-size: 14px; color: var(--dim); background: none; border: 0; border-radius: 999px; padding: 9px 17px; cursor: pointer; transition: background .2s ease, color .2s ease; }
+  .ctrl button:hover { color: var(--ink); }
+  .ctrl button[aria-pressed="true"] { color: var(--ink); background: rgba(244, 239, 230, .15); box-shadow: inset 0 0 0 1px rgba(244, 239, 230, .3); }
+  .center .ctrl { margin-top: 28px; }
+
+  /* practice mode badge */
+  #pax {
+    position: fixed; left: clamp(18px, 3vw, 40px); bottom: 18px; display: none; align-items: center; gap: 9px;
+    color: #c5d190; pointer-events: none; text-shadow: 0 1px 12px rgba(0, 0, 0, .8);
+  }
+  .pax #pax { display: flex; animation: paxIn .7s ease both; }
+  #title.show ~ #pax { top: 24px; bottom: auto; }
+  #pax svg { width: 56px; height: 27px; overflow: visible; filter: drop-shadow(0 0 7px rgba(197, 209, 144, .4)); }
+  #pax span { font-family: var(--serif); font-size: 21px; letter-spacing: .16em; line-height: 1; }
+  @keyframes paxIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes rise { from { opacity: 0; transform: translateY(26px); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
   .t-best { position: absolute; right: clamp(18px, 3vw, 40px); top: 22px; text-align: right; font-size: 13px; color: var(--dim); }
   .t-best b { display: block; font-weight: 400; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -116,15 +136,18 @@
 
   .nogl-msg { display: none; position: fixed; inset: 0; place-content: center; text-align: center; padding: 24px; line-height: 1.6; }
   .nogl .nogl-msg { display: grid; }
-  .nogl .screen, .nogl #hud, .nogl #mute { display: none; }
+  .nogl .screen, .nogl #hud, .nogl #mute, .nogl #pax { display: none; }
 
   @media (max-width: 640px) {
     #hud { padding: 14px 16px; gap: 12px; }
-    .keys { display: none; }
+    .keys .more { display: none; }
+    .keys { line-height: 1.6; margin-top: 14px; }
+    .t-row { gap: 14px 18px; margin-top: 22px; }
     #mute { bottom: 12px; }
+    #pax { bottom: 12px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    h1, .lede, .t-row { animation: none; }
+    h1, .lede, .t-row, .keys, .pax #pax { animation: none; }
     #banner.show { animation-name: bannerCalm; }
     @keyframes bannerCalm { 0%, 100% { opacity: 0; } 15%, 75% { opacity: 1; } }
   }
@@ -150,13 +173,28 @@
     <p class="lede">Run your shuttle along every thread. Close a square and it lights up. Moths hunt the light, but a freshly lit square stuns the ones close by.</p>
     <div class="t-row">
       <button id="startBtn" class="go" type="button">Start weaving</button>
-      <p class="keys">Steer with the arrow keys or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>, or swipe.<br><kbd>P</kbd> pauses, <kbd>M</kbd> mutes, <kbd>F</kbd> fills the screen.</p>
+      <div class="ctrl" role="group" aria-label="Controls">
+        <button type="button" data-ctrl="third" aria-pressed="true">Third person</button>
+        <button type="button" data-ctrl="first" aria-pressed="false">First person</button>
+      </div>
     </div>
+    <p class="keys">
+      <span class="how third">Point the way with the arrow keys or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>. On a touch screen, swipe.</span>
+      <span class="how first">The shuttle keeps going. <kbd>←</kbd> and <kbd>→</kbd> (or <kbd>A</kbd> <kbd>D</kbd>) turn it left or right. On a touch screen, tap that side.</span>
+      <span class="more"><kbd>P</kbd> pauses, <kbd>M</kbd> mutes, <kbd>F</kbd> fills the screen.</span>
+    </p>
   </div>
 </section>
 
 <section id="pause" class="screen center">
-  <div><h2>Paused</h2><p>Press <kbd>P</kbd> to pick the thread back up.</p></div>
+  <div>
+    <h2>Paused</h2>
+    <p>Press <kbd>P</kbd> to pick the thread back up.</p>
+    <div class="ctrl" role="group" aria-label="Controls">
+      <button type="button" data-ctrl="third" aria-pressed="true">Third person</button>
+      <button type="button" data-ctrl="first" aria-pressed="false">First person</button>
+    </div>
+  </div>
 </section>
 
 <section id="over" class="screen center">
@@ -169,6 +207,7 @@
 </section>
 
 <button id="mute" type="button" aria-pressed="false">Sound on</button>
+<div id="pax" role="img" aria-label="Practice mode: the moths cannot hurt you"><svg viewBox="0 0 72 30" aria-hidden="true"><path d="M4 25C20 24 42 17 60 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><g fill="currentColor"><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(12.7 23.7) rotate(-64)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(17.2 23.1) rotate(34) scale(.92)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(23.9 21.0) rotate(-61)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(28.4 20.4) rotate(30) scale(.92)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(35.6 17.1) rotate(-58)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(40.1 16.5) rotate(26) scale(.92)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(47.3 12.1) rotate(-55)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(51.8 11.5) rotate(22) scale(.92)"/><path d="M0 0C3-3.4 9-3.6 13 0C9 2.9 3 2.5 0 0Z" transform="translate(58.5 6.6) rotate(-34) scale(.8)"/></g><g fill="#8f9a5c" stroke="currentColor" stroke-width=".7"><circle cx="21.5" cy="26.6" r="2.3"/><circle cx="33.6" cy="23.4" r="2.3"/></g></svg><span>PAX</span></div>
 
 <div class="nogl-msg"><p>Lightloom needs WebGL 2 to draw its board.<br>Open it in a current version of Chrome, Edge, Firefox or Safari.</p></div>
 

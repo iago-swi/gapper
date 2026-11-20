@@ -28,15 +28,20 @@ can press the next turn before you reach the knot. A thread is woven only once y
 have run its whole length; turn back halfway and it unravels. A square lights when
 its four threads are woven. Light every square to finish the weave.
 
+There are two ways to steer. Choose one on the title screen or while paused; the
+choice is remembered.
+
+| Controls | Keyboard | Touch screen |
+| --- | --- | --- |
+| Third person | The arrow keys or `WASD` point the way to go. The opposite direction turns the shuttle back at once. | Swipe |
+| First person | `←` and `→` (or `A` and `D`) turn the shuttle left or right of its heading. It sets off by itself and cannot turn back. | Tap the left or right side |
+
 | Key | Action |
 | --- | --- |
-| Arrow keys or `WASD` | Steer |
 | `P` or `Esc` | Pause |
 | `M` | Sound on/off |
 | `F` | Full screen |
 | `Enter` or `Space` | Start |
-
-On a touch screen, swipe to steer.
 
 Moths travel along the same threads and touching one costs a spark. You start with
 three sparks. Your defense is the loom itself: a freshly lit square stuns every moth
@@ -44,18 +49,28 @@ within two squares of it for 1.8 seconds, and a stunned moth is harmless. Lighti
 squares in quick succession builds a chain that multiplies their score. The best
 score is kept in the browser.
 
+<details>
+<summary>Easter egg (spoiler)</summary>
+
+Type `PAX` at any time, on any screen, to switch practice mode on or off. While it is
+on, the moths cannot hurt the shuttle, and a small olive branch with the word PAX
+shows in a corner of the screen. A run in which practice mode was used does not count
+toward the best score.
+
+</details>
+
 ## Technical notes
 
 ### Stack
 
 | | |
 | --- | --- |
-| Delivery | `index.html` plus three scripts in `js/`, about 1370 lines (73 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
+| Delivery | `index.html` plus three scripts in `js/`, about 1470 lines (81 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
 | Language | Plain JavaScript (ES2020) in classic scripts, no framework. |
 | Rendering | WebGL 2 (GLSL ES 3.00) for the whole scene and post-processing. HTML and CSS for the score bar, banners and screens. |
 | Sound | Web Audio API. Every sound is synthesized; there are no audio files. |
 | Type | Instrument Serif and Sora from Google Fonts, with system fallbacks. |
-| Storage | One `localStorage` key, `lightloom.best`, for the best score. |
+| Storage | Two `localStorage` keys: `lightloom.best` for the best score and `lightloom.controls` for the steering choice. |
 | Requirements | A browser with WebGL 2. `EXT_color_buffer_float` is used for HDR render targets when present; otherwise the game falls back to 8-bit targets. |
 
 | File | Responsibility |
@@ -79,11 +94,32 @@ marked woven only when the shuttle arrives at its far knot. Reversing flips the 
 instead of swapping the end points, so going back to the knot you left weaves nothing
 and the half-pulled thread retracts.
 
-The most recently pressed direction is remembered and taken at the next knot where it
-is possible. Pressing the direction opposite to travel reverses at once.
-
 In portrait windows (aspect ratio under 0.8) columns and rows are swapped, so the
 board stands upright on a phone.
+
+### Steering
+
+A key press is applied inside the key handler, not on the next frame. What it does
+depends on the controls.
+
+- **Third person.** The pressed direction is remembered and taken at the next knot
+  where it is possible. The direction opposite to travel reverses at once.
+- **First person.** Left and right are measured from the shuttle's heading. A turn is
+  held for one second and taken at the first knot where it is open; after that it
+  lapses, so an old key press cannot fire several knots later. The shuttle sets off by
+  itself, rounds a corner unprompted and waits at a wall where both ways are open.
+  There is no turning back.
+
+Turns can only happen at knots, so the delay a player feels comes from pressing just
+after a knot and then riding a whole thread (0.23 s at the starting speed) to the
+next one. To remove it, a sideways turn pressed within 0.3 threads past a knot, about
+70 ms, is taken at that knot if the turn was open there. The shuttle moves onto the
+new thread at the same distance from the knot, the half-pulled thread is dropped, and
+the drawn position eases across within a tenth of a second. The window is kept short
+because a longer one would also catch turns meant for the next knot.
+
+On a touch screen a swipe counts after 16 pixels, and in first person a tap acts on
+touch-down.
 
 ### Rendering pipeline
 
@@ -201,7 +237,9 @@ unwoven thread touches the knot, a breadth-first search finds the nearest one.
 `window.__loom` exposes the game state and a `tick(n, dt)` function that advances the
 simulation by fixed steps. The game was checked with scripted runs through this hook
 (weaving, chains, losing a spark, weave change, game over, phone layout), and with a
-real click and real key presses for starting, steering and pausing. The screenshot
+real click and real key presses for starting, steering and pausing. The two control
+schemes, the late-turn window and practice mode were checked the same way, with
+simulated key presses; they have not been tried on a real touch screen. The screenshot
 was taken from such a run. Sound was not checked by ear, and frame rate on slower
 graphics hardware has not been measured.
 
