@@ -27,7 +27,7 @@ The runner starts with three lives. The first crossing of a rail earns 10 points
 
 Before launching, open **High scores** beside the best score. **This device** shows the top ten for this browser. **Everyone** shows the shared top ten. At game over, your row lights up if it made the displayed list. If a submitted run finishes below the shared top ten, its rank appears beneath the list. Older runs win ties.
 
-A qualifying run is recorded before you type. Leave the initials blank to appear as a dash, or enter up to three letters or digits. Enter or Escape in the field moves focus to **Play again**. Press Enter there to launch. After you enter initials once, the game remembers them and focuses **Play again** at the next game over.
+A qualifying run is recorded before you type. Leave the initials blank to appear as a dash, or enter up to three letters or digits. Enter or Escape in the field moves focus to **Play again**. Press Enter there to launch. Choose **Quit** to return to the start screen with your score saved. After you enter initials once, the game remembers them and focuses **Play again** at the next game over.
 
 ## Technical notes
 
