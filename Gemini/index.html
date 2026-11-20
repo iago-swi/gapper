@@ -98,8 +98,8 @@
 
         <div class="how-to-strip">
           <div class="how-item">
-            <div class="how-key">WASD / ARROWS</div>
-            <div class="how-desc">Trace luminous conduits along the grid</div>
+            <div id="how-steer-key" class="how-key">WASD / ARROWS</div>
+            <div id="how-steer-desc" class="how-desc">Trace luminous conduits along the grid</div>
           </div>
           <div class="how-item">
             <div class="how-key accent-gold">ENCLOSE CELLS</div>
@@ -109,6 +109,15 @@
             <div class="how-key accent-cyan">SPACE — GAP</div>
             <div class="how-desc">Sever the rail behind you to block Seekers</div>
           </div>
+        </div>
+
+        <div class="scheme-picker" data-scheme-picker>
+          <span class="picker-label">STEERING CONTROLS</span>
+          <div class="scheme-buttons" role="radiogroup" aria-label="Control scheme">
+            <button type="button" class="scheme-btn active" data-scheme="third" aria-pressed="true">Third person</button>
+            <button type="button" class="scheme-btn" data-scheme="first" aria-pressed="false">First person</button>
+          </div>
+          <div class="scheme-desc" data-scheme-desc>Arrow keys or WASD point where to go in four directions.</div>
         </div>
 
         <div class="sector-picker">
@@ -142,6 +151,14 @@
       <div class="modal-card">
         <div class="modal-eyebrow">SYSTEM PAUSED</div>
         <h2 class="modal-title">SECTOR ON HOLD</h2>
+        <div class="scheme-picker scheme-picker-compact" data-scheme-picker>
+          <span class="picker-label">STEERING CONTROLS</span>
+          <div class="scheme-buttons" role="radiogroup" aria-label="Control scheme">
+            <button type="button" class="scheme-btn active" data-scheme="third" aria-pressed="true">Third person</button>
+            <button type="button" class="scheme-btn" data-scheme="first" aria-pressed="false">First person</button>
+          </div>
+          <div class="scheme-desc" data-scheme-desc>Arrow keys or WASD point where to go in four directions.</div>
+        </div>
         <div class="modal-actions">
           <button id="btn-resume" class="primary-btn">
             <span class="btn-text">RESUME</span>
@@ -208,6 +225,7 @@
           </div>
         </div>
         <div id="go-new-best" class="new-best-pill hidden">NEW HIGH SCORE</div>
+        <p id="go-pax-note" class="go-pax-note hidden">Practice mode (PAX) was active during this run, so the score did not count toward your best score.</p>
         <div class="modal-actions">
           <button id="btn-retry" class="primary-btn">
             <span class="btn-text">PLAY AGAIN</span>
@@ -220,7 +238,7 @@
 
     <!-- Subtle Bottom Controls Hint during active play -->
     <footer id="controls-bar" class="controls-bar hidden">
-      <span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move</span>
+      <span id="controls-steer-hint"><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Move</span>
       <span class="sep">•</span>
       <span><kbd>SPACE</kbd> Sever Rail (Gap)</span>
       <span class="sep">•</span>
@@ -228,6 +246,28 @@
       <span class="sep">•</span>
       <span><kbd>M</kbd> Audio</span>
     </footer>
+
+    <!-- Subtle Practice Mode Indicator (hidden unless active) -->
+    <div id="pax-badge" class="pax-badge hidden" aria-label="Practice mode active">
+      <svg class="pax-svg" viewBox="0 0 64 26" fill="none" aria-hidden="true">
+        <!-- Curved stem -->
+        <path d="M5 20 C 19 19, 36 14, 58 6" stroke="#7f9662" stroke-width="1.7" stroke-linecap="round" />
+        <!-- 9 leaves along the branch -->
+        <ellipse cx="14" cy="14.5" rx="4.2" ry="1.8" transform="rotate(-38 14 14.5)" fill="#8fa772" />
+        <ellipse cx="18" cy="20.5" rx="4.1" ry="1.7" transform="rotate(24 18 20.5)" fill="#7d9460" />
+        <ellipse cx="25" cy="12" rx="4.4" ry="1.8" transform="rotate(-34 25 12)" fill="#8fa772" />
+        <ellipse cx="29" cy="17.8" rx="4.2" ry="1.7" transform="rotate(20 29 17.8)" fill="#7d9460" />
+        <ellipse cx="36" cy="9.2" rx="4.3" ry="1.7" transform="rotate(-30 36 9.2)" fill="#8fa772" />
+        <ellipse cx="40.5" cy="14.6" rx="4.1" ry="1.65" transform="rotate(18 40.5 14.6)" fill="#7d9460" />
+        <ellipse cx="47" cy="6.6" rx="4.1" ry="1.65" transform="rotate(-26 47 6.6)" fill="#8fa772" />
+        <ellipse cx="51" cy="11.2" rx="3.8" ry="1.55" transform="rotate(14 51 11.2)" fill="#7d9460" />
+        <ellipse cx="58.5" cy="5.5" rx="4" ry="1.55" transform="rotate(-18 58.5 5.5)" fill="#96af78" />
+        <!-- 2 olives -->
+        <ellipse cx="23.5" cy="18.2" rx="2.3" ry="3.1" transform="rotate(22 23.5 18.2)" fill="#5a6e42" stroke="#8aa36d" stroke-width="0.6" />
+        <ellipse cx="44" cy="12.2" rx="2.2" ry="3" transform="rotate(16 44 12.2)" fill="#5a6e42" stroke="#8aa36d" stroke-width="0.6" />
+      </svg>
+      <span class="pax-label">PAX</span>
+    </div>
 
     <!-- Touch Controls (shown only on coarse pointer / touch devices during play) -->
     <div id="touch-controls" class="touch-controls hidden">

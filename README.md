@@ -28,7 +28,7 @@ Turn every violet rail cyan before the pink seeker catches you. Press **Space** 
 
 ![Prism in play on Sector 01. Glowing golden crystalline chambers illuminate across a smoked-obsidian monolith over a WebGL 2 aurora nebula, while a radial shockwave ripples from a freshly sealed chamber and a crackling cyan Plasma Gap guards the rail ahead of a crimson Seeker.](Gemini/screenshot.png)
 
-Use the arrow keys or WASD to trace glowing conduits and enclose staggered chambers across 6 handcrafted sectors. Press **Space** (or **Shift** / **E**) to sever the rail behind you with a crackling **Plasma Gap** that stuns or traps Seekers, and seal all 4 diamond-marked corner chambers to ignite **Prism Overdrive**. Full architecture, shader, and AI notes are in [Gemini/README.md](Gemini/README.md).
+Use the arrow keys or WASD to trace glowing conduits and enclose staggered chambers across 6 handcrafted sectors. Press **Space** (or **Shift** / **E**) to sever the rail behind you with a crackling **Plasma Gap** that stuns or traps Seekers, and seal all 4 diamond-marked corner chambers to ignite **Prism Overdrive**. The title and pause screens also offer first-person steering, where left and right turn the ship relative to its direction of travel while it moves automatically. Full architecture, shader, and AI notes are in [Gemini/README.md](Gemini/README.md).
 
 ## Game history
 

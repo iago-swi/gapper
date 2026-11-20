@@ -279,8 +279,8 @@ window.Gapper = window.Gapper || {};
       // Player pool light
       if (state.player && state.player.deadTimer <= 0) {
         drawPool(
-          state.player.x,
-          state.player.y,
+          state.player.x + (state.player.visOffX || 0),
+          state.player.y + (state.player.visOffY || 0),
           L.cellPx * 1.45,
           od > 0 ? 'rgba(255, 214, 78, 0.24)' : 'rgba(56, 232, 255, 0.22)'
         );
@@ -772,8 +772,8 @@ window.Gapper = window.Gapper || {};
     _drawPlayer(ctx, player, L, t, od) {
       if (!player || player.deadTimer > 0) return;
       const dpr = L.dpr;
-      const x = player.x;
-      const y = player.y;
+      const x = player.x + (player.visOffX || 0);
+      const y = player.y + (player.visOffY || 0);
       const r = 12.5 * dpr;
 
       ctx.save();
