@@ -266,14 +266,26 @@
     spawnActors(); G.p.invuln = 2.2; G.state = 'play'; G.stateT = 0;
     for (const m of G.moths) m.wake = 1.2 + m.kind * 0.5;
   }
+  function toTitle() {                 // from the game-over screen back to the opening screen and its demo
+    if (G.state !== 'over') return;
+    el.over.classList.remove('show'); el.title.classList.add('show');
+    startTitle();
+    setTimeout(() => $('startBtn').focus(), 50);
+  }
+  function endRun() {                  // give up a paused run: it ends like any other, and its score counts
+    if (!G.paused) return;
+    el.pause.style.transition = 'none'; togglePause(); void el.pause.offsetWidth; el.pause.style.transition = '';   // no cross-fade: two headings would overlap
+    G.combo = 0; el.chain.classList.remove('show'); el.banner.classList.remove('show');
+    gameOver();
+  }
   function gameOver() {
+    const woven = G.level - (G.state === 'clear' ? 0 : 1);      // a run ended during the fireworks has finished that weave too
     G.state = 'over'; G.stateT = 0;
     const record = !G.practiced && G.score > G.best; if (record) { G.best = G.score; store.set(G.best); }
     mine = G.practiced ? null : addScore(G.score, G.level);
     shared.run = SHARED && !G.practiced && G.score > 0 ? { k: randomKey(), n: cleanName(prefs.get('name')), s: G.score, w: G.level } : null;
     for (const r of shared.top) r.me = false;          // the mark of the run before this one
     if (shared.run) sharedLoad(shared.run); else if (view === 'shared') sharedLoad();
-    const woven = G.level - 1;
     el.overLine.textContent = `You finished ${woven} ${woven === 1 ? 'weave' : 'weaves'} and scored ${fmt(G.score)}.`;
     el.overBest.textContent = G.practiced ? 'Practice runs do not count toward your best.' : record ? 'That is your best yet.'
       : mine ? `That is number ${scores.indexOf(mine) + 1} on this device.` : `Your best is ${fmt(G.best)}.`;
@@ -687,13 +699,15 @@
     switch (e.code) {
       case 'Enter': case 'Space': if (document.activeElement && document.activeElement.tagName === 'BUTTON') return; e.preventDefault(); confirm(); break;
       case 'KeyP': togglePause(); pausedByP = G.paused; break;
-      case 'Escape': if (scoresOpen()) { closeScores(); break; } togglePause(); pausedByP = false; break;
+      case 'Escape': if (scoresOpen()) closeScores(); else if (G.state === 'over') toTitle(); else { togglePause(); pausedByP = false; } break;
       case 'KeyM': AudioFX.init(); toggleMute(); break;
       case 'KeyF': if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); break;
     }
   });
   $('startBtn').addEventListener('click', startGame);
   $('againBtn').addEventListener('click', startGame);
+  $('titleBtn').addEventListener('click', toTitle);
+  $('endBtn').addEventListener('click', endRun);
   $('scoresBtn').addEventListener('click', openScores);
   $('backBtn').addEventListener('click', closeScores);
   for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('click', () => setView(b.dataset.list));

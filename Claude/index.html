@@ -137,6 +137,14 @@
   .center p { font-size: clamp(15px, 1.5vw, 18px); line-height: 1.6; font-weight: 300; }
   .center > div { margin: auto; }
   .center .go { margin-top: 30px; }
+  /* a row of actions: the main one, and a quieter way out next to it */
+  .acts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 14px; margin-top: 30px; }
+  .center .acts .go { margin-top: 0; }
+  button.quiet {
+    font: inherit; font-size: 15px; color: var(--dim); background: rgba(4, 5, 11, .35); border: 1px solid var(--faint); border-radius: 999px;
+    padding: 14px 24px; cursor: pointer; transition: color .2s ease, border-color .2s ease;
+  }
+  button.quiet:hover { color: var(--ink); border-color: rgba(244, 239, 230, .5); }
 
   /* ---------- high scores ---------- */
   .tall h2 { font-size: clamp(40px, 6vw, 76px); }
@@ -189,6 +197,13 @@
     .list { line-height: 1.55; margin-top: 12px; }
     .name-row { margin-top: 10px; }
     .center .go { margin-top: 16px; padding: 12px 26px; }
+    .acts { margin-top: 16px; }
+    button.quiet { padding-block: 11px; }
+  }
+  @media (max-width: 400px) {   /* keep both actions on one row */
+    .acts { gap: 8px; }
+    .center .acts .go { padding-inline: 20px; }
+    button.quiet { font-size: 14px; padding-inline: 13px; }
   }
   @media (max-height: 700px) and (min-width: 660px) {   /* a low, wide window: two columns of five */
     .tall h2 { font-size: 38px; }
@@ -197,6 +212,7 @@
     .list li { grid-template-columns: 1.5em 3.2em 5.2em 5.2em; }
     .list .day { display: none; }
     .center .go { margin-top: 20px; }
+    .acts { margin-top: 20px; }
   }
   @media (prefers-reduced-motion: reduce) {
     h1, .lede, .t-row, .keys, .pax #pax { animation: none; }
@@ -246,6 +262,7 @@
       <button type="button" data-ctrl="third" aria-pressed="true">Third person</button>
       <button type="button" data-ctrl="first" aria-pressed="false">First person</button>
     </div>
+    <div class="acts"><button id="endBtn" class="quiet" type="button">End this run</button></div>
   </div>
 </section>
 
@@ -261,7 +278,10 @@
     <ol id="overList" class="list" aria-label="High scores"></ol>
     <p id="overNote" class="note" hidden></p>
     <label id="nameRow" class="name-row" hidden>Your initials <input id="initials" maxlength="3" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
-    <button id="againBtn" class="go" type="button">Weave again</button>
+    <div class="acts">
+      <button id="againBtn" class="go" type="button">Weave again</button>
+      <button id="titleBtn" class="quiet" type="button">Title screen</button>
+    </div>
   </div>
 </section>
 

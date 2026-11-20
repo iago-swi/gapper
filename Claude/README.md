@@ -42,6 +42,11 @@ choice is remembered.
 | `M` | Sound on/off |
 | `F` | Full screen |
 | `Enter` or `Space` | Start |
+| `Esc` after a game | Back to the title screen |
+
+When a game ends, "Weave again" starts the next one and "Title screen" leads back to
+the opening screen. A paused game can be given up with "End this run": it ends like
+any other game, and its score counts.
 
 Moths travel along the same threads and touching one costs a spark. You start with
 three sparks. Your defense is the loom itself: a freshly lit square stuns every moth
@@ -73,7 +78,7 @@ in the high scores.
 
 | | |
 | --- | --- |
-| Delivery | `index.html` plus three scripts in `js/`, about 1660 lines (94 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
+| Delivery | `index.html` plus three scripts in `js/`, about 1700 lines (96 KB) in total. `Lightloom.html` is the same game with the scripts inlined. No dependencies, no build step. |
 | Language | Plain JavaScript (ES2020) in classic scripts, no framework. |
 | Rendering | WebGL 2 (GLSL ES 3.00) for the whole scene and post-processing. HTML and CSS for the score bar, banners and screens. |
 | Sound | Web Audio API. Every sound is synthesized; there are no audio files. |
@@ -290,7 +295,10 @@ five window sizes from 320 × 568 to 1440 × 900. The shared list was tested aga
 the Worker running on the development machine with a local database, including
 refused scores, renaming, ranking, the rate limit and an unreachable service. The
 deployed service was then checked with the same requests and with one complete game
-sent from the game itself; the test entries were removed afterwards. Sound was not checked by ear, and frame rate on slower
-graphics hardware has not been measured.
+sent from the game itself; the test entries were removed afterwards. The "Title
+screen" and "End this run" buttons were checked with scripted runs (a run given up
+with and without a score, during play and during the fireworks, `Esc` after a game)
+at four window sizes from 320 × 568 to 900 × 560. Sound was not checked by ear, and
+frame rate on slower graphics hardware has not been measured.
 
 [Game history and the other versions](../README.md)
