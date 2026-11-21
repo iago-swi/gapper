@@ -14,7 +14,7 @@
     background:radial-gradient(ellipse at 50% 0%,#1d1a3a 0%,#0f1024 45%,var(--ink) 100%)}
   main{width:100%;max-width:1080px}
   h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(56px,12vw,120px);line-height:.9;margin:0 0 20px;letter-spacing:-.02em}
-  p.lede{max-width:580px;font-size:18px;line-height:1.55;margin:0 0 34px;opacity:.9}
+  p.lede{font-size:18px;line-height:1.55;margin:0 0 34px;opacity:.9}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
   a.card{display:block;padding:14px 14px 24px;border-radius:18px;text-decoration:none;color:inherit;
     background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);transition:transform .15s,background .15s,border-color .15s}
@@ -28,6 +28,7 @@
   .tag{display:inline-block;margin:16px 8px 0;padding:5px 12px;border-radius:99px;font-size:13px;font-weight:600;background:var(--cyan);color:var(--ink)}
   .claude .tag{background:var(--jade)}
   .gemini .tag{background:var(--gold)}
+  .ver{margin-left:4px;font-size:13px;opacity:.6}
   footer{margin-top:34px;font-size:13px;opacity:.6}
   footer a{color:var(--cyan)}
 </style>
@@ -35,22 +36,22 @@
 <body>
 <main>
   <h1>Gapper</h1>
-  <p class="lede">Three arcade games inspired by the 1986 DOS game Gapper. Run along the lines of a grid, color every one and stay ahead of the pursuer. Each version below was built by a different AI assistant from the same brief.</p>
+  <p class="lede">Three arcade games inspired by the 1986 DOS game Gapper. Run along the lines of a grid, color every one and stay ahead of the pursuer. Each game offers third-person and first-person steering and keeps the ten best scores on your device and on a list shared between its players. Each version below was built by a different AI assistant from the same brief.</p>
   <div class="grid">
     <a class="card claude" href="Claude/index.html">
       <img src="Claude/screenshot.jpg" width="800" height="500" alt="Lightloom in play: nine lit squares of blue-green glass on a loom floating in a nebula, the shuttle beside a freshly lit square and two moths stunned pale">
-      <h2>Lightloom</h2><p>Built with Claude. Weave threads of light on a floating loom while moths hunt you.</p><span class="tag">Play Lightloom</span>
+      <h2>Lightloom</h2><p>Built with Claude. Weave threads of light on a floating loom while moths hunt you. Closing a square lights it and stuns the moths close by, and squares lit in quick succession build a chain that multiplies their score. Eight board sizes, drawn with WebGL 2, with music and sound made in the browser.</p><span class="tag">Play Lightloom</span><span class="ver">Version 1.3.1</span>
     </a>
     <a class="card" href="ChatGPT/index.html">
       <img src="ChatGPT/screenshot.png" width="800" height="500" alt="Neon Circuit in play: cyan rails mark the runner’s route, violet rails remain to be traced, and a pink seeker approaches the open gap">
-      <h2>Neon Circuit</h2><p>Built with ChatGPT. Glowing rails above a pixel-art city, and a gap to cut behind you.</p><span class="tag">Play Neon Circuit</span>
+      <h2>Neon Circuit</h2><p>Built with ChatGPT. Trace every glowing rail above a pixel-art city while a pink seeker chases you across three repeating layouts, and cut a temporary gap behind you to send it another way.</p><span class="tag">Play Neon Circuit</span><span class="ver">Version 1.3.0</span>
     </a>
     <a class="card gemini" href="Gemini/index.html">
       <img src="Gemini/screenshot.png" width="800" height="500" alt="Prism in play: golden crystalline chambers illuminated on an obsidian monolith over a WebGL 2 nebula, with a shockwave ripple, crackling cyan Plasma Gap, and crimson Seeker">
-      <h2>Prism</h2><p>Built with Gemini. WebGL 2 HDR bloom, synth-glass chambers, Prism Overdrive and 6 sectors.</p><span class="tag">Play Prism</span>
+      <h2>Prism</h2><p>Built with Gemini. Trace conduits to seal staggered chambers across six handcrafted sectors, cut a Plasma Gap behind you to stun the three kinds of Seeker, and seal all four corner chambers for Prism Overdrive. Drawn with WebGL 2 bloom.</p><span class="tag">Play Prism</span><span class="ver">Version 1.2.1</span>
     </a>
   </div>
-  <footer>Personal fan project. Watch the <a href="https://www.youtube.com/watch?v=hsFy7OdexQw&amp;t=20s">original DOS game</a>.</footer>
+  <footer>Personal fan project. <a href="https://github.com/iago-swi/gapper">Source and documentation</a> and <a href="https://github.com/iago-swi/gapper/releases">release notes</a> on GitHub. Watch the <a href="https://www.youtube.com/watch?v=hsFy7OdexQw&amp;t=20s">original DOS game</a>.</footer>
 </main>
 </body>
 </html>
