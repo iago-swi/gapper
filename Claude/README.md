@@ -10,6 +10,9 @@ image or audio files and no libraries.
 
 **[Play it in your browser](https://iago-swi.github.io/gapper/Claude/)**
 
+The version number is shown on the title screen. The [changelog](CHANGELOG.md) lists
+what changed in each version.
+
 ![Lightloom in play on the third weave, Verdigris: eight lit squares in blue-green glass, the shuttle at the center of a shockwave, and two pink moths closing in](screenshot.jpg)
 
 ## Run it
@@ -84,6 +87,7 @@ in the high scores.
 | Sound | Web Audio API. Every sound is synthesized; there are no audio files. |
 | Type | Instrument Serif and Sora from Google Fonts, with system fallbacks. |
 | Storage | `localStorage` only: `lightloom.scores` (the high-score list), `lightloom.name` (the initials used last), `lightloom.best`, `lightloom.controls` (the steering choice) and `lightloom.list` (which list is on view). |
+| Version | Written once, in `index.html` (the line shown on the title screen). Each version has a section in [CHANGELOG.md](CHANGELOG.md), a tag `lightloom-v…` and a release on GitHub; the rules are in [VERSIONING.md](../VERSIONING.md). |
 | Requirements | A browser with WebGL 2. `EXT_color_buffer_float` is used for HDR render targets when present; otherwise the game falls back to 8-bit targets. |
 
 | File | Responsibility |
@@ -93,6 +97,7 @@ in the high scores.
 | [js/audio.js](js/audio.js) | Sequencer, instruments and sound effects. |
 | [index.html](index.html) | Markup and CSS for the title, score bar, banners, pause and game-over screens. |
 | [Lightloom.html](Lightloom.html) | Portable single-file edition. |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 | [scores-worker/](scores-worker/) | Web service for a high-score list shared between players. Not part of the game files; see [High scores](#high-scores). |
 
 ### The board

@@ -42,6 +42,14 @@ The move that gave *Gapper* its name let the player temporarily break a line. A 
 
 *Prism* pairs the classic Gap severance with staggered Amidar-style chamber enclosures, 3 escalating Seeker archetypes, and a 4-pass WebGL 2 optical bloom and shockwave pipeline over an architectural smoked-obsidian monolith.
 
+## Releases
+
+Each game is numbered separately and has its own release notes. The [Releases page](https://github.com/iago-swi/gapper/releases) lists every numbered release, with the standalone game of that release attached where there is one. The numbering rules are in [VERSIONING.md](VERSIONING.md).
+
+| Game | Release notes |
+| --- | --- |
+| Lightloom | [Claude/CHANGELOG.md](Claude/CHANGELOG.md) |
+
 ## Repository structure
 
 ```text
@@ -50,5 +58,6 @@ gapper/
 ├── ChatGPT/       Neon Circuit: game, editable source, screenshot and technical notes
 ├── Gemini/        Prism: WebGL 2 game, screenshot and technical notes
 ├── index.html     Landing page that links to all three versions
+├── VERSIONING.md  How the games are numbered and released
 └── README.md
 ```
