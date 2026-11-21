@@ -13,7 +13,7 @@ image or audio files and no libraries.
 The version number is shown on the title screen. The [changelog](CHANGELOG.md) lists
 what changed in each version.
 
-![Lightloom in play on the third weave, Verdigris: eight lit squares in blue-green glass, the shuttle at the center of a shockwave, and two pink moths closing in](screenshot.jpg)
+![Lightloom in play on the third weave, Verdigris: nine lit squares in blue-green glass, the shuttle beside a freshly lit square with a faint ring of light around it, and two moths stunned pale](screenshot.jpg)
 
 ## Run it
 
@@ -283,6 +283,11 @@ unwoven thread touches the knot, a breadth-first search finds the nearest one.
 
 - With `prefers-reduced-motion`, screen shake, shockwaves, the chromatic flash and
   the glitch are reduced to a quarter and the title animation is switched off.
+- Closing a square never bends or moves the picture, because the player is following
+  the shuttle and the moths at that moment. It is marked on the board only: sparks, a
+  flash of the square and a faint ring of light as wide as the stun. The screen-wide
+  effects (shockwave distortion, shake, color fringe) are kept for moments when play
+  has stopped: losing a spark and the fireworks after a weave.
 - The game pauses when the window loses focus.
 - A run given up with "End this run" goes through the same game-over step as a lost
   one, so it is scored, listed and sent to the shared list in the same way. "Title

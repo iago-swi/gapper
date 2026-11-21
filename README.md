@@ -14,7 +14,7 @@ To play offline, save a standalone file with the `.html` extension and open it i
 
 ## Claude version
 
-![Lightloom in play on the third weave. Eight squares of blue-green glass are lit, the shuttle sits at the center of a shockwave, and two pink moths close in along the unwoven threads.](Claude/screenshot.jpg)
+![Lightloom in play on the third weave. Nine squares of blue-green glass are lit, the shuttle sits beside a freshly lit square with a faint ring of light around it, and two moths are stunned pale.](Claude/screenshot.jpg)
 
 Use the arrow keys or WASD to steer the shuttle. Run the full length of a thread to weave it, and close all four sides of a square to light it. A freshly lit square stuns the moths close by. On a touchscreen, swipe. The title screen also offers first-person steering, where the left and right keys turn the shuttle. The ten best scores are kept in the browser, with initials, and a second list is shared between all players. When a game ends you can start again or go back to the title screen, and a paused game can be ended early with its score kept.
 

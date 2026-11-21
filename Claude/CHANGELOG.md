@@ -6,6 +6,16 @@ on the game's title screen. Each version is also a
 standalone game of that version attached. The numbering rules are in
 [VERSIONING.md](../VERSIONING.md).
 
+## 1.3.1 (2026-11-21)
+
+### Changed
+
+- Closing a square no longer bends or shakes the picture. The shockwave ripple, the
+  camera shake and the color fringe are gone at that moment, so the shuttle and the
+  moths stay easy to follow.
+- The ring of light around a freshly lit square, which shows how far the stun reaches,
+  is fainter.
+
 ## 1.3.0 (2026-11-21)
 
 ### Added

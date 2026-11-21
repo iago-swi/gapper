@@ -348,9 +348,9 @@
       const px = s === 0 ? u : s === 1 ? u : s === 2 ? -.42 : .42, pz = s === 0 ? -.42 : s === 1 ? .42 : u;
       spark(X + px, 0.15, Z + pz, px * rnd(.5, 2.5), rnd(1.5, 5), pz * rnd(.5, 2.5), rnd(.5, 1.2), rnd(.04, .09), k % 5 ? col : [1, 1, 1], 3, 5);
     }
-    rings.push({ x: X, z: Z, r0: 0.4, r1: 2.3, life: 0.6, max: 0.6, c: col, a: 1.6 });
-    shocks.push({ X, Z, t: 0, dur: 0.7, str: quiet ? 0.5 : 1 });
-    G.shake = Math.max(G.shake, quiet ? 0.1 : 0.35); G.chroma = Math.max(G.chroma, 0.2);
+    // nothing here may bend or move the picture: the player is tracking the shuttle and the moths.
+    // The ring on the ground shows how far the stun reaches.
+    rings.push({ x: X, z: Z, r0: 0.4, r1: 2.3, life: 0.6, max: 0.6, c: col, a: 0.7 });
     let stunned = false;
     for (const m of G.moths) if (m.wake <= 0 && Math.hypot(m.x - (i + .5), m.y - (j + .5)) < 2.0) { m.stun = 1.8; stunned = true; burst(wx(m.x), .5, wz(m.y), [.6, .75, 1], 14, 2); }
     if (!quiet) {
