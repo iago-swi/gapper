@@ -4,7 +4,9 @@ A modern luminous synth-glass reimagining of the 1986 MS-DOS arcade classic *Gap
 
 All WebGL 2 shaders, dual-scale Gaussian HDR bloom, radial shockwave refraction, architectural board rendering, and Web Audio synthesizer sounds run locally in the browser with zero external libraries, build steps, or media files.
 
-**[Play it in your browser](https://iago-swi.github.io/gapper/Gemini/)**
+**[Play it in your browser](https://iago-swi.github.io/gapper/Gemini/)** · [Release notes (CHANGELOG.md)](CHANGELOG.md)
+
+The current version number is shown at the bottom of the title screen.
 
 ![GAPPER // PRISM gameplay: glowing smoked-obsidian circuit monolith over a deep aurora nebula, with illuminated golden crystalline chambers, molten traced conduits, a crackling cyan Plasma Gap, and a crimson Seeker in pursuit](screenshot.png)
 
@@ -56,6 +58,7 @@ Gemini/
 ├── index.html           # Semantic HUD, title/sector picker, high-score & game-over modals
 ├── styles.css           # Frosted obsidian-glass UI, responsive 10-row tables, touch controls
 ├── screenshot.png       # Gameplay preview
+├── CHANGELOG.md         # Version history and player-facing release notes
 ├── README.md            # Technical documentation
 ├── scores-worker/       # Dedicated Cloudflare Worker + D1 service (prism-scores)
 │   ├── schema.sql
