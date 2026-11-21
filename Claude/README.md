@@ -279,6 +279,9 @@ unwoven thread touches the knot, a breadth-first search finds the nearest one.
 - With `prefers-reduced-motion`, screen shake, shockwaves, the chromatic flash and
   the glitch are reduced to a quarter and the title animation is switched off.
 - The game pauses when the window loses focus.
+- A run given up with "End this run" goes through the same game-over step as a lost
+  one, so it is scored, listed and sent to the shared list in the same way. "Title
+  screen" returns to the opening screen and restarts the demo board behind it.
 - Scores are formatted with Swiss thousands separators (16’440).
 
 ### Testing
