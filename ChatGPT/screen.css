@@ -45,6 +45,7 @@ nav button:hover,#expand:hover{color:#fff}nav button+button{border-left:1px soli
 .hero-inner{padding:25px 0 26px}
 .edition{display:flex;align-items:center;gap:10px;font:700 12px var(--mono);letter-spacing:2px;color:#c2b2df}
 .edition span{width:24px;height:6px;background:repeating-linear-gradient(115deg,#a47cff 0 3px,transparent 3px 6px)}
+.edition small{font:400 11px var(--mono);letter-spacing:0;color:var(--muted)}
 h1{margin:8px 0 2px;line-height:0;width:min(385px,85%)}h1 canvas{width:100%;height:auto}
 .subtitle{width:min(363px,82%);display:flex;align-items:center;gap:15px;justify-content:center;color:#ff78c8;font:italic 800 18px var(--sans);text-transform:uppercase;letter-spacing:7px;text-shadow:0 0 16px #f7278e88;white-space:nowrap}
 .subtitle i{width:32px;height:2px;transform:skew(-35deg);background:#e853a9}

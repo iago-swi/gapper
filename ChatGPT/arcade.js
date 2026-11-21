@@ -87,6 +87,7 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
+  $("version").hidden=game.state!=="ready";
   $("score").textContent=String(game.score).padStart(6,"0");scores.updateBest();
   $("score-open").hidden=game.state!=="ready";$("best-label").hidden=game.state==="ready";
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;

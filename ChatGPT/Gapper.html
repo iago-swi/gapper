@@ -53,6 +53,7 @@ nav button:hover,#expand:hover{color:#fff}nav button+button{border-left:1px soli
 .hero-inner{padding:25px 0 26px}
 .edition{display:flex;align-items:center;gap:10px;font:700 12px var(--mono);letter-spacing:2px;color:#c2b2df}
 .edition span{width:24px;height:6px;background:repeating-linear-gradient(115deg,#a47cff 0 3px,transparent 3px 6px)}
+.edition small{font:400 11px var(--mono);letter-spacing:0;color:var(--muted)}
 h1{margin:8px 0 2px;line-height:0;width:min(385px,85%)}h1 canvas{width:100%;height:auto}
 .subtitle{width:min(363px,82%);display:flex;align-items:center;gap:15px;justify-content:center;color:#ff78c8;font:italic 800 18px var(--sans);text-transform:uppercase;letter-spacing:7px;text-shadow:0 0 16px #f7278e88;white-space:nowrap}
 .subtitle i{width:32px;height:2px;transform:skew(-35deg);background:#e853a9}
@@ -92,7 +93,7 @@ dialog{width:min(450px,calc(100% - 30px));color:#f2effa;background:#171420;borde
     <section class="hero" aria-labelledby="game-name">
       <div class="city"></div>
       <div class="hero-inner">
-        <div class="edition"><span></span>1986 ARCADE REMIX</div>
+        <div class="edition"><span></span>1986 ARCADE REMIX <small id="version">Version 1.3.0</small></div>
         <h1 id="game-name"><canvas id="wordmark" width="870" height="170" role="img" aria-label="Gapper">Gapper</canvas></h1>
         <div class="subtitle"><i></i>Neon Circuit<i></i></div>
       </div>
@@ -594,6 +595,7 @@ const states={
 };
 function sync(){
   const [state,msg,action]=states[game.state];
+  $("version").hidden=game.state!=="ready";
   $("score").textContent=String(game.score).padStart(6,"0");scores.updateBest();
   $("score-open").hidden=game.state!=="ready";$("best-label").hidden=game.state==="ready";
   $("level").textContent=$("sector").textContent=String(game.level).padStart(2,"0");$("circuit").textContent=game.name;

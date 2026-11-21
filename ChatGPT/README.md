@@ -6,6 +6,8 @@ The camera stays above the board in both steering schemes. In **Third person**, 
 
 **[Play it in your browser](https://iago-swi.github.io/gapper/ChatGPT/)**
 
+The title screen shows the current version beside “1986 ARCADE REMIX”. See the [changelog](CHANGELOG.md) for what changed in each release.
+
 ![Midnight grid in play. The runner has just cut a gap in the cyan trail. The scoreboard reads 90 points and 11% traced.](screenshot.png)
 
 **Play offline.** Download [Gapper.html](https://raw.githubusercontent.com/iago-swi/gapper/main/ChatGPT/Gapper.html), save it as an HTML file, and open it in a modern browser. It includes the scripts, styles and skyline image. To work on the source, clone the repository and open this folder’s `index.html`. Both editions run directly from disk.
@@ -44,6 +46,7 @@ Three classic scripts divide the work. `Circuit.Game` owns positions, routes, sc
 | [screen.css](screen.css) and [index.html](index.html) | Define the cabinet, responsive layout, touch controls and instructions dialog. |
 | [midnight-city.png](midnight-city.png) | The custom pixel-art skyline generated for this edition. |
 | [Gapper.html](Gapper.html) | Portable, single-file edition containing the same game and artwork. |
+| [CHANGELOG.md](CHANGELOG.md) | Dated release notes for players, newest version first. |
 
 The editable edition loads the scripts in order with `defer`. The standalone edition embeds their contents, the stylesheet and the skyline PNG in one HTML file. Both use built-in browser APIs and run directly from disk. Shared rankings require a network connection.
 

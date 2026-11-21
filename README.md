@@ -49,6 +49,7 @@ Each game is numbered separately and has its own release notes. The [Releases pa
 | Game | Release notes |
 | --- | --- |
 | Lightloom | [Claude/CHANGELOG.md](Claude/CHANGELOG.md) |
+| Neon Circuit | [ChatGPT/CHANGELOG.md](ChatGPT/CHANGELOG.md) |
 
 ## Repository structure
 
