@@ -1,6 +1,6 @@
 # Gapper · Neon Circuit
 
-*Neon Circuit* is a single-player rail chase. Fly the cyan ship over every violet rail while the pink seeker takes the shortest open route to intercept you. A cut breaks the rail behind you for 3.6 seconds. It can send the seeker on a detour, but it also blocks your own way back. When your last ship is caught, compare your score on the device and shared leaderboards.
+*Neon Circuit* is a single-player rail chase. Fly the cyan ship over every violet rail while the pink seeker takes the shortest open route to intercept you. A cut breaks the rail behind you for 3.6 seconds. It can send the seeker on a detour, but it also blocks your own way back. When the last ship is caught, check the device and shared leaderboards. Choose **Play again** to launch a fresh run or **Quit** to return to the start screen.
 
 The camera stays above the board in both steering schemes. In **Third person**, Left always means the left side of the screen. In **First person**, Left means the ship’s left. When the ship is heading down the screen, that same input sends it toward the right edge.
 
@@ -97,7 +97,7 @@ The seeker starts at 2.02 rails per second and gains 0.15 per level, up to 3.25 
 | --- | --- |
 | Caught with a life remaining | Both ships return to their starting nodes and the gap clears. First person relaunches after one second. **Continue** launches immediately. The score and traced rails carry over. |
 | Last rail traced | **Next level** loads the next layout with a fresh trace set. Score and remaining lives carry over. Clearing Midnight grid earns 860 points in total, including the 100-point level bonus. |
-| Last life lost | **Play again** starts at level 1 with three lives and zero points. The personal best survives. |
+| Last life lost | **Play again** launches a fresh run. **Quit** resets the board to level 1 with three lives and zero points, then puts keyboard focus on **Start game**. Both choices preserve the steering scheme and saved scores. |
 
 ### How the cabinet draws a frame
 
@@ -141,7 +141,7 @@ For example, an eleventh-place response contains ten rows and `rank: 11`. The cl
 
 **Which scores can reach the service?** Let `w` be the ending level and `j = w − 1` the number already cleared. Each completed cycle of three layouts contributes 231 rails (76 + 78 + 77). The remainder contributes 0, 76 or 154 rails. If `R` is that total, the minimum is `10R + 50j(j + 1)`. The second term sums the 100-point-per-level clear bonuses. The maximum adds `10 × (rails on level w − 1)`, since crossing the final rail clears the level before the ship can be caught there. A submitted score must be a positive integer multiple of 10. For example, level 2 admits 860 through 1,630 in steps of ten. These checks establish plausibility. The browser runs the game and reports its result.
 
-**Network behavior.** Eligible scores go to the Worker at game over even when **This device** is selected. Initials edits appear immediately. After 700 ms without another keystroke, the client sends the latest initials with the same run key. It sends edits for one run in order and ignores older replies when a newer request has taken over the display. A request times out after eight seconds. If the submission fails, a qualifying device score stays saved, and the game leaves the failed run off the upload queue. Opening **High scores** with **Everyone** selected fetches fresh rankings. Both editions validate rows and render initials as text.
+**Network behavior.** Eligible scores go to the Worker at game over even when **This device** is selected. Initials edits appear immediately. After 700 ms without another keystroke, the client sends the latest initials with the same run key. Choosing **Quit** leaves a pending initials edit free to finish in the background. The client sends edits for one run in order and ignores older replies when a newer request has taken over the display. A request times out after eight seconds. If the submission fails, a qualifying device score stays saved, and the game leaves the failed run off the upload queue. Opening **High scores** with **Everyone** selected fetches fresh rankings. Both editions validate rows and render initials as text.
 
 <details><summary>Easter egg (spoiler)</summary>
 
