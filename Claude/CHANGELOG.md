@@ -6,6 +6,28 @@ on the game's title screen. Each version is also a
 standalone game of that version attached. The numbering rules are in
 [VERSIONING.md](../VERSIONING.md).
 
+## 1.4.0 (2026-11-22)
+
+The game now gets harder more slowly, so that a game lasts longer.
+
+### Added
+
+- A newly arrived moth strolls for its first two weaves. It drifts about at random, a
+  little slower and with a fainter glow, and turns on the shuttle only when it comes
+  within three squares. After those two weaves it hunts like the others.
+- The banner at the start of a weave says when a moth arrives and when it starts to
+  hunt.
+
+### Changed
+
+- The second moth arrives on weave 4 instead of weave 3, and the third on weave 8
+  instead of weave 6.
+- From one weave to the next, the moths gain speed and persistence half as fast as
+  before.
+- A spare spark is earned after every second weave instead of every third. Five sparks
+  remain the most you can hold.
+- Scores can climb higher than before. Earlier scores stay on both lists.
+
 ## 1.3.1 (2026-11-21)
 
 ### Changed

@@ -214,17 +214,21 @@
   const adjCells = (x0, y0, x1, y1) => y0 === y1 ? [[Math.min(x0, x1), y0 - 1], [Math.min(x0, x1), y0]] : [[x0 - 1, Math.min(y0, y1)], [x0, Math.min(y0, y1)]];
   const actor = (ax, ay) => ({ ax, ay, dx: 0, dy: 0, pdx: 0, pdy: 0, s: 1, t: 0, x: ax, y: ay, ox: 0, oy: 0 });
 
+  // The second moth arrives on weave 4 and the third on weave 8. A new moth strolls for its first two weaves
+  // (see calm) and hunts after that: `stroll` is the index of the strolling moth, or -1.
   function levelCfg(n) {
     const [cols, rows] = SIZES[Math.min(n - 1, SIZES.length - 1)];
     const pSpeed = 4.3 + Math.min(n - 1, 8) * 0.11;
-    return { cols, rows, moths: n < 3 ? 1 : n < 6 ? 2 : 3, pSpeed, mSpeed: pSpeed * Math.min(0.9, 0.6 + (n - 1) * 0.035), aggro: Math.min(0.95, 0.62 + (n - 1) * 0.05) };
+    return { cols, rows, moths: n < 4 ? 1 : n < 8 ? 2 : 3, stroll: n === 4 || n === 5 ? 1 : n === 8 || n === 9 ? 2 : -1, pSpeed,
+      mSpeed: pSpeed * Math.min(0.9, 0.6 + (n - 1) * 0.0175), aggro: Math.min(0.95, 0.62 + (n - 1) * 0.025) };
   }
+  const NEWS = { 4: 'a second moth drifts in', 6: 'the second moth now hunts', 8: 'a third moth drifts in', 10: 'the third moth now hunts' };
   function spawnActors() {
     const cx = Math.floor(G.cols / 2);
     G.p = actor(cx, G.rows); G.p.invuln = 0; G.p.acc = 0;
     const spots = [[0, 0], [G.cols, 0], [cx, 0]];
     G.moths = [];
-    for (let i = 0; i < G.cfg.moths; i++) { const m = actor(spots[i][0], spots[i][1]); m.kind = i; m.stun = 0; m.wake = 1.4 + i * 0.7; m.seed = rnd(0, 6); G.moths.push(m); }
+    for (let i = 0; i < G.cfg.moths; i++) { const m = actor(spots[i][0], spots[i][1]); m.kind = i; m.stroll = i === G.cfg.stroll; m.stun = 0; m.wake = 1.4 + i * 0.7; m.seed = rnd(0, 6); G.moths.push(m); }
     G.want = [0, 0]; G.turn = 0;
   }
 
@@ -246,7 +250,7 @@
     newBoard(G.cfg.cols, G.cfg.rows); setDye((n - 1) % DYES.length); spawnActors();
     G.state = 'intro'; G.stateT = 0; G.buildT = 0; G.levelTime = 0; G.combo = 0; G.comboT = 0;
     el.chain.classList.remove('show');
-    hudLevel(); hudProg(); banner(DYES[G.dye].name, 'Weave ' + n, 1.7);
+    hudLevel(); hudProg(); banner(DYES[G.dye].name, 'Weave ' + n + (NEWS[n] ? ': ' + NEWS[n] : ''), NEWS[n] ? 2.4 : 1.7);
     AudioFX.setMode('play', n);
   }
   function kill() {
@@ -302,7 +306,7 @@
     const par = G.cols * G.rows * 2.4, bonus = Math.max(0, Math.round((par - G.levelTime) * 10) * 10);
     G.score += bonus; hudScore();
     let extra = '';
-    if (G.level % 3 === 0 && G.lives < 5) { G.lives++; hudLives(); extra = ' and a spare spark'; }
+    if (G.level % 2 === 0 && G.lives < 5) { G.lives++; hudLives(); extra = ' and a spare spark'; }
     banner(DYES[G.dye].name + ' is woven', bonus ? `Speed bonus ${fmt(bonus)}${extra}` : (extra ? 'You earned a spare spark' : ''), 2.6);
     for (const m of G.moths) burst(wx(m.x), 0.5, wz(m.y), G.pal.moth, 50, 4);
     G.moths = []; G.flash = 0.35; G.chroma = 0.6;
@@ -438,10 +442,13 @@
     if (!pick) return false;
     e.dx = pick[0]; e.dy = pick[1]; return true;
   }
+  // A strolling moth is calm while the shuttle is more than three squares away: it drifts at random, a
+  // little slower and with a fainter glow. Closer than that, it behaves like any other moth.
+  const calm = m => m.stroll && Math.hypot(m.x - G.p.x, m.y - G.p.y) >= 3;
   function chooseMoth(m) {
     const p = G.p; let tx = p.x, ty = p.y;
     if (m.kind === 1) { tx += p.dx * p.s * 2.5; ty += p.dy * p.s * 2.5; }
-    const chase = Math.random() < G.cfg.aggro * (m.kind === 2 ? 0.6 : 1);
+    const chase = !calm(m) && Math.random() < G.cfg.aggro * (m.kind === 2 ? 0.6 : 1);
     let best = null, bd = 1e9; const opts = [];
     for (const d of DIRS) {
       if (!validDir(m.ax, m.ay, d[0], d[1]) || (d[0] === -m.pdx && d[1] === -m.pdy)) continue;
@@ -454,7 +461,7 @@
     for (const m of G.moths) {
       if (m.wake > 0) { m.wake -= dt; continue; }
       if (m.stun > 0) { m.stun -= dt; continue; }
-      stepActor(m, G.cfg.mSpeed * dt, chooseMoth);
+      stepActor(m, G.cfg.mSpeed * (calm(m) ? 0.8 : 1) * dt, chooseMoth);
       if (lethal && G.state === 'play' && !G.pax && G.p.invuln <= 0 && Math.hypot(m.x - G.p.x, m.y - G.p.y) < 0.42) kill();
     }
   }
@@ -614,7 +621,7 @@
       const wk = (m.wake > 0 ? clamp(1 - m.wake / 0.7, 0, 1) : 1) * ap(Math.hypot(wx(m.x), wz(m.y)));
       if (wk <= 0) continue;
       const X = wx(m.x), Z = wz(m.y), Y = 0.55 + 0.07 * Math.sin(t * 5 + m.seed), st = m.stun > 0 ? 1 : 0;
-      bill(X, Y, Z, 1.1 * wk, 0, mc[0], mc[1], mc[2], st ? 0.12 : 0.45, 0, 0, 0, 0);
+      bill(X, Y, Z, 1.1 * wk, 0, mc[0], mc[1], mc[2], st ? 0.12 : calm(m) ? 0.2 : 0.45, 0, 0, 0, 0);
       bill(X, Y, Z, 0.56 * wk, m.seed, mc[0], mc[1], mc[2], 1, 2, 0, st, 0);
     }
     // shuttle
