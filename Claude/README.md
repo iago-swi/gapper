@@ -13,7 +13,7 @@ image or audio files and no libraries.
 The version number is shown on the title screen. The [changelog](CHANGELOG.md) lists
 what changed in each version.
 
-![Lightloom in play on the third weave, Verdigris: nine lit squares in blue-green glass, the shuttle beside a freshly lit square with a faint ring of light around it, and two moths stunned pale](screenshot.jpg)
+![Lightloom in play on the fourth weave, Madder: six lit squares in rose glass, the shuttle beside a freshly lit square with a faint ring of light around it, one moth stunned pale and a strolling moth further up the loom](screenshot.jpg)
 
 ## Run it
 
@@ -55,6 +55,11 @@ Moths travel along the same threads and touching one costs a spark. You start wi
 three sparks. Your defense is the loom itself: a freshly lit square stuns every moth
 within two squares of it for 1.8 seconds, and a stunned moth is harmless. Lighting
 squares in quick succession builds a chain that multiplies their score.
+
+The first three weaves have one moth. A second arrives on weave 4 and a third on
+weave 8. A newly arrived moth strolls for two weaves: it drifts about, glows fainter
+than the others and turns on the shuttle only when it comes within three squares.
+After that it hunts. Every second weave earns a spare spark, up to five.
 
 The ten best scores are kept in the browser, each with three initials, the weave
 reached and the date. The list is shown when a game ends and opens from the title
@@ -238,6 +243,11 @@ otherwise it picks at random.
 | Second | A point 2.5 threads ahead of the shuttle. |
 | Third | The shuttle, but it chases only 60% as often as the others. |
 
+A moth strolls during the weave on which it arrives and the next one. While the
+shuttle is three squares away or more, a strolling moth always picks its exit at
+random, flies at 80% of the moth speed and is drawn with a fainter glow. Closer than
+that, it behaves like the other moths.
+
 A moth touches the shuttle at a distance of 0.42 threads. After losing a spark the
 shuttle returns to its starting knot and cannot be hit for 2.2 seconds.
 
@@ -246,14 +256,14 @@ shuttle returns to its starting knot and cannot be hit for 2.2 seconds.
 | | Weave 1 | Later |
 | --- | --- | --- |
 | Board | 6 × 4 | 7 × 4, 7 × 5, 8 × 5, 9 × 5, 9 × 6, 10 × 6, then 10 × 7 from weave 8 |
-| Moths | 1 | 2 from weave 3, 3 from weave 6 |
+| Moths | 1 | 2 from weave 4, 3 from weave 8. A new moth strolls on weaves 4 and 5, and 8 and 9 |
 | Shuttle speed (threads per second) | 4.3 | +0.11 per weave up to weave 9 |
-| Moth speed (share of shuttle speed) | 60% | +3.5 points per weave, up to 90% |
-| Chance that a moth chases at a knot | 62% | +5 points per weave, up to 95% |
+| Moth speed (share of shuttle speed) | 60% | +1.75 points per weave, up to 90% |
+| Chance that a moth chases at a knot | 62% | +2.5 points per weave, up to 95% |
 
 A woven thread scores 10. A lit square scores 100 times the chain, which grows by one
 for each square lit within 3 seconds of the last, up to 9. Finishing a weave under
-par (2.4 seconds per square) adds 100 points per second saved. Every third weave
+par (2.4 seconds per square) adds 100 points per second saved. Every second weave
 gives a spare spark, up to five.
 
 The five dyes (Indigo, Saffron, Verdigris, Madder, Orchil) each set the thread color,
@@ -311,7 +321,11 @@ deployed service was then checked with the same requests and with one complete g
 sent from the game itself; the test entries were removed afterwards. The "Title
 screen" and "End this run" buttons were checked with scripted runs (a run given up
 with and without a score, during play and during the fireworks, `Esc` after a game)
-at four window sizes from 320 × 568 to 900 × 560. Sound was not checked by ear, and
+at four window sizes from 320 × 568 to 900 × 560. The difficulty of version 1.4.0 was
+checked with scripted runs through weaves 1 to 11 (number of moths, speeds, spare
+sparks, banner lines) and by counting how often each moth reaches a shuttle that
+wanders at random: a strolling moth reaches it about half as often as a hunting one.
+How the new pace feels to a player has not been tried by hand. Sound was not checked by ear, and
 frame rate on slower graphics hardware has not been measured.
 
 [Game history and the other versions](../README.md)
