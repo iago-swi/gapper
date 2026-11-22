@@ -29,32 +29,77 @@ Raising a number sets the numbers after it back to zero.
 ## What gets a version
 
 - Every change to a game that a player can notice gets a new version of that game.
-- Changes to documentation only (a README, a screenshot, this file) get no version.
-  They are committed as usual.
+- Changes to documentation only (a README, a screenshot, this file) get no version,
+  no tag and no release. They still go through a branch and a pull request.
 - Changes outside the game folders (the landing page, the main README) get no version.
 - Several changes pushed together are one version, numbered by the largest of them.
 
 ## Steps for a new version
 
-1. Decide the new number from the table above.
-2. Update the version shown in the game, if the game shows one.
-3. Add a section at the top of the game's `CHANGELOG.md`: the number, the date
+Every change reaches `main` through a branch and a pull request. Nothing is committed
+or pushed directly on `main`.
+
+1. Bring `main` up to date:
+
+   ```sh
+   git switch main
+   git pull
+   ```
+
+2. Create a branch from it. The name says what the change is:
+
+   | Change | Branch | Example |
+   | --- | --- | --- |
+   | A new version of a game | `release/<game>-vX.Y.Z` | `release/lightloom-v1.4.0` |
+   | Documentation only | `docs/<short-name>` | `docs/pull-request-workflow` |
+
+   ```sh
+   git switch -c release/lightloom-v1.4.0
+   ```
+
+3. Decide the new number from the table above.
+4. Update the version shown in the game, if the game shows one.
+5. Add a section at the top of the game's `CHANGELOG.md`: the number, the date
    (`YYYY-MM-DD`), and the changes under "Added", "Changed", "Fixed" or "Removed".
-4. Rebuild the game's standalone file, if it has one.
-5. Commit, then pull with rebase and push.
-6. Tag that commit and push the tag:
+6. Rebuild the game's standalone file, if it has one.
+7. Commit on the branch, under the repository owner's Git identity, with a plain
+   message. No attribution lines: no "Co-Authored-By", no "Generated with".
+8. Push the branch and open a pull request. The title is the version number and a few
+   words. The body is the changelog section for this version, in plain language for
+   players:
 
    ```sh
-   git tag -a lightloom-v1.4.0 -m "Lightloom 1.4.0"
-   git push origin lightloom-v1.4.0
+   git push -u origin release/lightloom-v1.4.0
+   gh pr create --base main --title "Lightloom 1.4.0: a few words" --body-file notes.md
    ```
 
-7. Publish the release, with the changelog section as its notes and the standalone
-   file attached:
+   When only a pull request is asked for, stop here and give its link.
+
+9. Merge it with a merge commit, not a squash and not a rebase:
 
    ```sh
-   gh release create lightloom-v1.4.0 --title "Lightloom 1.4.0" --notes-file notes.md Claude/Lightloom.html
+   gh pr merge --merge --delete-branch
    ```
+
+10. Update `main`, tag the merge commit and push the tag:
+
+    ```sh
+    git switch main
+    git pull
+    git tag -a lightloom-v1.4.0 -m "Lightloom 1.4.0"
+    git push origin lightloom-v1.4.0
+    ```
+
+11. Publish the release, with the changelog section as its notes and the standalone
+    file attached:
+
+    ```sh
+    gh release create lightloom-v1.4.0 --verify-tag --title "Lightloom 1.4.0" --notes-file notes.md Claude/Lightloom.html
+    ```
+
+A change to the documentation alone follows steps 1, 2, 7, 8 and 9 and ends there. Its
+pull request has a short title and a short description, and it gets no version, no tag
+and no release.
 
 ## Writing the notes
 
@@ -65,6 +110,9 @@ Raising a number sets the numbers after it back to zero.
 
 ## Rules
 
+- Every change goes through a branch and a pull request. Nothing is committed or pushed
+  directly on `main`.
+- `main` is never force-pushed, and existing history is not rewritten.
 - A tag that has been pushed is never moved or deleted. A mistake is corrected with a
   new version.
 - Work only in your own game's folder, changelog and tags. Do not write release notes
